@@ -3,63 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kena Bingo Web App</title>
+    <title>Kena Bingo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --gold-color: #f59e0b;
+            --bg-color: #06202b;
+            --card-bg: #0b2e3d;
+            --btn-bg: #0e3b4e;
+            --accent-yellow: #f1c40f;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
             --text-color: #ffffff;
+            --subtext: #8faec1;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 12px;
+            padding-bottom: 70px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-        }
+        .screen { display: none; }
+        .screen.active { display: block; }
 
-        .header h1 {
-            color: var(--gold-color);
-            font-size: 24px;
-            margin: 5px 0;
-        }
-
-        .wallet-card {
-            background: linear-gradient(135deg, #1e293b, #334155);
-            border: 1px solid #475569;
-            border-radius: 12px;
-            padding: 12px 20px;
-            width: 90%;
-            max-width: 350px;
+        /* User Info Bar */
+        .user-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background-color: var(--card-bg);
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+        .balance { font-weight: bold; color: var(--accent-yellow); }
+
+        /* Notice Bar */
+        .notice-bar {
+            background-color: #2c3e50;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
             margin-bottom: 15px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            color: var(--subtext);
         }
 
-        .btn-deposit {
-            background-color: #10b981;
-            color: white;
-            border: none;
-            padding: 8px 14px;
+        /* Room Selection Cards */
+        .room-card {
+            background-color: var(--btn-bg);
+            border: 1px solid #16526c;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .room-title { font-size: 18px; font-weight: bold; color: var(--accent-yellow); }
+
+        /* Card Selector Grid (1 to 400) */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            max-height: 350px;
+            overflow-y: auto;
+            padding: 5px;
+            background: var(--card-bg);
             border-radius: 8px;
+        }
+        .card-item {
+            background-color: var(--btn-bg);
+            border: 1px solid #1c5d7a;
+            padding: 10px 0;
+            text-align: center;
+            border-radius: 6px;
             font-weight: bold;
             cursor: pointer;
         }
+        .card-item.selected { background-color: var(--accent-yellow); color: #000; }
 
+        /* Bingo Board Grid */
         .bingo-board {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -67,24 +95,18 @@
             background-color: var(--card-bg);
             padding: 10px;
             border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-            max-width: 350px;
-            width: 100%;
+            margin-bottom: 15px;
         }
-
         .header-cell {
-            background-color: var(--accent-color);
-            color: #0f172a;
+            background-color: #16526c;
+            color: var(--accent-yellow);
             font-weight: bold;
-            font-size: 18px;
             text-align: center;
-            padding: 10px 0;
+            padding: 8px 0;
             border-radius: 6px;
         }
-
         .cell {
-            background-color: #334155;
-            color: white;
+            background-color: var(--btn-bg);
             font-size: 16px;
             font-weight: bold;
             aspect-ratio: 1;
@@ -93,112 +115,225 @@
             justify-content: center;
             border-radius: 6px;
             cursor: pointer;
-            transition: all 0.2s;
         }
+        .cell.marked { background-color: var(--accent-yellow); color: #000; }
+        .cell.free { background-color: var(--accent-red); color: #fff; font-size: 11px; }
 
-        .cell.marked {
-            background-color: var(--gold-color);
-            color: #000;
-            transform: scale(0.95);
-        }
-
-        .cell.free {
-            background-color: #ef4444;
-            color: white;
-            font-size: 12px;
-        }
-
-        .actions {
-            margin-top: 20px;
+        /* Bottom Navigation Bar */
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
             display: flex;
-            gap: 10px;
-            width: 100%;
-            max-width: 350px;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #16526c;
         }
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--subtext);
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .nav-btn.active { color: var(--accent-yellow); }
 
-        .btn-action {
-            flex: 1;
+        .btn-main {
+            width: 100%;
+            background-color: var(--accent-yellow);
+            color: #000;
             padding: 12px;
             border: none;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 16px;
             cursor: pointer;
-        }
-
-        .btn-bingo {
-            background-color: var(--gold-color);
-            color: black;
+            font-size: 16px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🎲 Kena BINGO 🎲</h1>
-        <p style="margin:0; color:#94a3b8;">ካርድ #<span id="card-num">105</span></p>
-    </div>
-
-    <div class="wallet-card">
-        <div>
-            <div style="font-size: 12px; color: #94a3b8;">የቀረዉ ሒሳብ</div>
-            <div style="font-size: 18px; font-weight: bold;"><span id="balance">0.00</span> ETB</div>
+    <!-- 1. HOME SCREEN (ዋና ገፅ) -->
+    <div id="home-screen" class="screen active">
+        <div class="user-bar">
+            <div>👤 <span id="username">Ante</span></div>
+            <div class="balance">ዋና ሒሳብ: <span id="balance-val">50.00</span> ብር</div>
         </div>
-        <button class="btn-deposit" onclick="depositMoney()">💳 ብር አስገባ</button>
+
+        <div class="notice-bar">
+            📢 CBE BIRR / ቴሌብር ክፍያዎችን በመጠቀም የጨዋታ ሂሳብዎን መሙላት ይችላሉ።
+        </div>
+
+        <h3>ጨዋታ ይምረጡ</h3>
+        <div class="room-card" onclick="openCardSelection(50)">
+            <div class="room-title">ባለ 50 ብር</div>
+            <div>ምዝገባ ላይ</div>
+        </div>
+        <div class="room-card" onclick="openCardSelection(20)">
+            <div class="room-title">ባለ 20 ብር</div>
+            <div>8 ሴክንድ</div>
+        </div>
+        <div class="room-card" onclick="openCardSelection(10)">
+            <div class="room-title">ባለ 10 ብር</div>
+            <div>36 ሴክንድ</div>
+        </div>
+        <div class="room-card" onclick="openCardSelection(5)">
+            <div class="room-title">ባለ 5 ብር</div>
+            <div>ምዝገባ ላይ</div>
+        </div>
     </div>
 
-    <div class="bingo-board" id="board">
-        <!-- Headers -->
-        <div class="header-cell">B</div>
-        <div class="header-cell">I</div>
-        <div class="header-cell">N</div>
-        <div class="header-cell">G</div>
-        <div class="header-cell">O</div>
-        <!-- Numbers will be loaded dynamically -->
+    <!-- 2. CARD SELECTION SCREEN (ካርድ መምረጫ ከ1 እስከ 400) -->
+    <div id="cards-screen" class="screen">
+        <button onclick="showScreen('home-screen')" style="background:none; border:none; color:var(--subtext); font-size:16px; margin-bottom:10px;">← ተመለስ</button>
+        <h3>የካርድ ቁጥር ይምረጡ (1 - 400)</h3>
+        <p style="color:var(--subtext); font-size:12px;">የተመረጠ ክፍል፦ ባለ <span id="selected-room-price">10</span> ብር</p>
+        
+        <div class="card-grid" id="card-grid">
+            <!-- 1 to 400 Cards generated dynamically -->
+        </div>
+
+        <button class="btn-main" onclick="startBingoGame()">ወደ ጨዋታው ግባ (Play)</button>
     </div>
 
-    <div class="actions">
-        <button class="btn-action btn-bingo" onclick="claimBingo()">🏆 BINGO!</button>
+    <!-- 3. BINGO GAME SCREEN (የቢንጎ ጨዋታ ገፅ) -->
+    <div id="game-screen" class="screen">
+        <button onclick="showScreen('cards-screen')" style="background:none; border:none; color:var(--subtext); font-size:16px; margin-bottom:10px;">← ካርድ ቀይር</button>
+        <div style="text-align:center; margin-bottom:10px;">
+            <h2>🎲 KENA BINGO 🎲</h2>
+            <p style="color:var(--accent-yellow);">የተመረጠው ካርድ፦ #<span id="playing-card-num">1</span></p>
+        </div>
+
+        <div class="bingo-board" id="bingo-board">
+            <div class="header-cell">B</div>
+            <div class="header-cell">I</div>
+            <div class="header-cell">N</div>
+            <div class="header-cell">G</div>
+            <div class="header-cell">O</div>
+            <!-- Dynamic 5x5 Grid Numbers -->
+        </div>
+
+        <button class="btn-main" style="background-color: var(--accent-green);" onclick="claimBingo()">🏆 BINGO!</button>
+    </div>
+
+    <!-- 4. LEADERBOARD SCREEN (አሸናፊዎች) -->
+    <div id="leaderboard-screen" class="screen">
+        <h3>🏆 የዛሬ አሸናፊዎች (Leaderboard)</h3>
+        <div class="user-bar">
+            <div>1. አበበ</div>
+            <div class="balance">1,200 ብር</div>
+        </div>
+        <div class="user-bar">
+            <div>2. ሳራ</div>
+            <div class="balance">850 ብር</div>
+        </div>
+        <div class="user-bar">
+            <div>3. ኬና</div>
+            <div class="balance">500 ብር</div>
+        </div>
+    </div>
+
+    <!-- 5. DEPOSIT / CASHOUT SCREEN -->
+    <div id="wallet-screen" class="screen">
+        <h3>💳 የብር ማስገቢያ እና ማውጫ</h3>
+        <div class="notice-bar">
+            የቴሌብር ወይም የCBE BIRR ሂሳብ በመጠቀም ገቢ/ወጪ ያድርጉ።
+        </div>
+        <button class="btn-main" style="background-color:var(--accent-green);" onclick="sendTelegramAction('deposit')">📥 ብር አስገባ (Deposit)</button>
+        <button class="btn-main" style="background-color:var(--accent-red);" onclick="sendTelegramAction('cashout')">📤 ብር አውጣ (Cashout)</button>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <div class="nav-bar">
+        <button class="nav-btn active" onclick="showScreen('home-screen')">🏠<br>ዋና ገፅ</button>
+        <button class="nav-btn" onclick="showScreen('wallet-screen')">📥<br>ብር አስገባ</button>
+        <button class="nav-btn" onclick="showScreen('wallet-screen')">📤<br>ብር አውጣ</button>
+        <button class="nav-btn" onclick="showScreen('leaderboard-screen')">📊<br>አሸናፊዎች</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // አፑን ሙሉ ስክሪን ለማድረግ
+        tg.expand();
 
-        // የናሙና ቢንጎ ካርድ ቁጥሮች
-        const sampleCard = [
-            [5, 22, 35, 50, 65],
-            [12, 18, 41, 55, 70],
-            [3, 29, "FREE", 48, 61],
-            [8, 25, 39, 52, 68],
-            [14, 30, 44, 59, 75]
-        ];
+        let selectedCardNumber = 1;
+        let roomPrice = 10;
 
-        const board = document.getElementById('board');
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
 
-        // ካርዱን በግራፊክስ መሳል
-        for (let r = 0; r < 5; r++) {
-            for (let c = 0; c < 5; c++) {
-                const val = sampleCard[r][c];
-                const cell = document.createElement('div');
-                cell.className = 'cell' + (val === "FREE" ? ' free marked' : '');
-                cell.innerText = val;
-                
-                if (val !== "FREE") {
-                    cell.onclick = () => cell.classList.toggle('marked');
-                }
-                board.appendChild(cell);
+        function openCardSelection(price) {
+            roomPrice = price;
+            document.getElementById('selected-room-price').innerText = price;
+            generateCardGrid();
+            showScreen('cards-screen');
+        }
+
+        // Generate Cards 1 to 400
+        function generateCardGrid() {
+            const grid = document.getElementById('card-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 400; i++) {
+                const item = document.createElement('div');
+                item.className = 'card-item' + (i === selectedCardNumber ? ' selected' : '');
+                item.innerText = '#' + i;
+                item.onclick = () => {
+                    document.querySelectorAll('.card-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    selectedCardNumber = i;
+                };
+                grid.appendChild(item);
             }
         }
 
-        function depositMoney() {
-            tg.sendData(JSON.stringify({ action: "deposit" }));
-            alert("የባንክ ክፍያ ገፅ በመከፈት ላይ ነው...");
+        // Start Bingo Game with chosen card
+        function startBingoGame() {
+            document.getElementById('playing-card-num').innerText = selectedCardNumber;
+            generateBingoBoard();
+            showScreen('game-screen');
+        }
+
+        // Generate 5x5 Bingo Board
+        function generateBingoBoard() {
+            const board = document.getElementById('bingo-board');
+            const headers = board.querySelectorAll('.header-cell');
+            board.innerHTML = '';
+            headers.forEach(h => board.appendChild(h));
+
+            const sampleNumbers = [
+                [4, 30, 32, 54, 69],
+                [10, 25, 40, 49, 74],
+                [9, 23, "FREE", 59, 71],
+                [3, 26, 38, 57, 68],
+                [6, 29, 35, 53, 67]
+            ];
+
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const val = sampleNumbers[r][c];
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (val === "FREE" ? ' free marked' : '');
+                    cell.innerText = val;
+                    if (val !== "FREE") {
+                        cell.onclick = () => cell.classList.toggle('marked');
+                    }
+                    board.appendChild(cell);
+                }
+            }
         }
 
         function claimBingo() {
-            tg.sendData(JSON.stringify({ action: "bingo_claim" }));
-            alert("BINGO ጥያቄዎ ለቦቱ ተልኳል!");
+            alert(`ካርድ #${selectedCardNumber} BINGO ብለዋል! ጥያቄዎ ለሰርቨር ተልኳል።`);
+            sendTelegramAction('claim_bingo', { card: selectedCardNumber });
+        }
+
+        function sendTelegramAction(actionName, data = {}) {
+            tg.sendData(JSON.stringify({ action: actionName, ...data }));
         }
     </script>
 </body>
