@@ -7,11 +7,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #06202b;
-            --card-bg: #0b2e3d;
-            --btn-bg: #0e3b4e;
+            --bg-color: #081d28;
+            --card-bg: #0e2938;
+            --inner-card: #143547;
+            --accent-blue: #00a8ff;
+            --accent-green: #00b894;
             --accent-yellow: #f1c40f;
-            --accent-green: #2ecc71;
             --accent-red: #e74c3c;
             --text-color: #ffffff;
             --subtext: #8faec1;
@@ -29,97 +30,149 @@
         .screen { display: none; }
         .screen.active { display: block; }
 
+        /* App Bar */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--card-bg);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
         /* User Info Bar */
         .user-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             background-color: var(--card-bg);
-            padding: 10px 15px;
+            padding: 12px 15px;
             border-radius: 12px;
             margin-bottom: 12px;
         }
-        .balance { font-weight: bold; color: var(--accent-yellow); }
+        .balance { font-size: 20px; font-weight: bold; color: #fff; }
 
-        /* Notice Bar */
-        .notice-bar {
-            background-color: #2c3e50;
-            padding: 8px 12px;
-            border-radius: 8px;
+        /* Notice Box */
+        .notice-box {
+            background-color: #3d131a;
+            border: 1px solid #78232b;
+            padding: 12px;
+            border-radius: 10px;
+            color: #ff8a80;
             font-size: 13px;
             margin-bottom: 15px;
-            color: var(--subtext);
+            line-height: 1.4;
         }
 
-        /* Room Selection Cards */
-        .room-card {
-            background-color: var(--btn-bg);
-            border: 1px solid #16526c;
+        /* Bank Cards Section */
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--subtext);
+            margin: 15px 0 8px 0;
+            text-transform: uppercase;
+        }
+
+        .bank-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .bank-card {
+            background-color: var(--card-bg);
             border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
+            padding: 12px;
+            border: 1px solid #1c4357;
+        }
+        .bank-name { font-size: 11px; color: var(--accent-blue); font-weight: bold; }
+        .acc-owner { font-size: 13px; font-weight: bold; margin: 4px 0; }
+        .acc-num { font-size: 14px; color: #fff; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .btn-copy {
+            width: 100%;
+            background-color: var(--accent-blue);
+            color: #fff;
+            border: none;
+            padding: 6px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        /* Deposit Input Controls */
+        .method-select {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .method-btn {
+            background-color: var(--card-bg);
+            border: 2px solid transparent;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .method-btn.selected { border-color: var(--accent-blue); background-color: var(--inner-card); }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--subtext);
+            margin-bottom: 5px;
+        }
+        .input-field {
+            width: 100%;
+            box-sizing: border-box;
+            background-color: var(--card-bg);
+            border: 1px solid #1c4357;
+            padding: 12px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--accent-green);
+            color: #fff;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* Transaction History */
+        .history-item {
+            background-color: var(--card-bg);
+            padding: 10px 12px;
+            border-radius: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: pointer;
+            margin-bottom: 8px;
         }
-        .room-title { font-size: 18px; font-weight: bold; color: var(--accent-yellow); }
-
-        /* Card Selector Grid (1 to 400) */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            max-height: 350px;
-            overflow-y: auto;
-            padding: 5px;
-            background: var(--card-bg);
-            border-radius: 8px;
-        }
-        .card-item {
-            background-color: var(--btn-bg);
-            border: 1px solid #1c5d7a;
-            padding: 10px 0;
-            text-align: center;
-            border-radius: 6px;
+        .badge-approved {
+            background-color: rgba(0, 184, 148, 0.2);
+            color: var(--accent-green);
+            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 4px;
             font-weight: bold;
-            cursor: pointer;
         }
-        .card-item.selected { background-color: var(--accent-yellow); color: #000; }
 
-        /* Bingo Board Grid */
-        .bingo-board {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            background-color: var(--card-bg);
-            padding: 10px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-        }
-        .header-cell {
-            background-color: #16526c;
-            color: var(--accent-yellow);
-            font-weight: bold;
-            text-align: center;
-            padding: 8px 0;
-            border-radius: 6px;
-        }
-        .cell {
-            background-color: var(--btn-bg);
-            font-size: 16px;
-            font-weight: bold;
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .cell.marked { background-color: var(--accent-yellow); color: #000; }
-        .cell.free { background-color: var(--accent-red); color: #fff; font-size: 11px; }
-
-        /* Bottom Navigation Bar */
+        /* Navigation Bar Bottom */
         .nav-bar {
             position: fixed;
             bottom: 0;
@@ -129,7 +182,7 @@
             display: flex;
             justify-content: space-around;
             padding: 10px 0;
-            border-top: 1px solid #16526c;
+            border-top: 1px solid #1c4357;
         }
         .nav-btn {
             background: none;
@@ -139,201 +192,174 @@
             cursor: pointer;
             text-align: center;
         }
-        .nav-btn.active { color: var(--accent-yellow); }
-
-        .btn-main {
-            width: 100%;
-            background-color: var(--accent-yellow);
-            color: #000;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-        }
+        .nav-btn.active { color: var(--accent-blue); }
     </style>
 </head>
 <body>
 
+    <!-- APP HEADER -->
+    <div class="app-header">
+        <h3 style="margin:0; color:var(--accent-blue);">🎲 KENA Bingo</h3>
+        <span style="font-size: 12px; color: var(--subtext);">ተጫዋች: Ante</span>
+    </div>
+
     <!-- 1. HOME SCREEN (ዋና ገፅ) -->
     <div id="home-screen" class="screen active">
         <div class="user-bar">
-            <div>👤 <span id="username">Ante</span></div>
-            <div class="balance">ዋና ሒሳብ: <span id="balance-val">50.00</span> ብር</div>
-        </div>
-
-        <div class="notice-bar">
-            📢 CBE BIRR / ቴሌብር ክፍያዎችን በመጠቀም የጨዋታ ሂሳብዎን መሙላት ይችላሉ።
+            <div>ዋና ሒሳብ</div>
+            <div class="balance">50.00 <small style="font-size:12px; color:var(--accent-yellow);">ብር</small></div>
         </div>
 
         <h3>ጨዋታ ይምረጡ</h3>
-        <div class="room-card" onclick="openCardSelection(50)">
-            <div class="room-title">ባለ 50 ብር</div>
-            <div>ምዝገባ ላይ</div>
-        </div>
-        <div class="room-card" onclick="openCardSelection(20)">
-            <div class="room-title">ባለ 20 ብር</div>
-            <div>8 ሴክንድ</div>
-        </div>
-        <div class="room-card" onclick="openCardSelection(10)">
-            <div class="room-title">ባለ 10 ብር</div>
-            <div>36 ሴክንድ</div>
-        </div>
-        <div class="room-card" onclick="openCardSelection(5)">
-            <div class="room-title">ባለ 5 ብር</div>
-            <div>ምዝገባ ላይ</div>
-        </div>
+        <button class="btn-submit" style="background-color:var(--inner-card); margin-bottom:10px; text-align:left;" onclick="showScreen('deposit-screen')">
+            💵 ባለ 50 ብር ጨዋታ (ምዝገባ ላይ)
+        </button>
+        <button class="btn-submit" style="background-color:var(--inner-card); margin-bottom:10px; text-align:left;" onclick="showScreen('deposit-screen')">
+            💵 ባለ 20 ብር ጨዋታ (8 ሴክንድ)
+        </button>
+        <button class="btn-submit" style="background-color:var(--inner-card); margin-bottom:10px; text-align:left;" onclick="showScreen('deposit-screen')">
+            💵 ባለ 10 ብር ጨዋታ (36 ሴክንድ)
+        </button>
     </div>
 
-    <!-- 2. CARD SELECTION SCREEN (ካርድ መምረጫ ከ1 እስከ 400) -->
-    <div id="cards-screen" class="screen">
-        <button onclick="showScreen('home-screen')" style="background:none; border:none; color:var(--subtext); font-size:16px; margin-bottom:10px;">← ተመለስ</button>
-        <h3>የካርድ ቁጥር ይምረጡ (1 - 400)</h3>
-        <p style="color:var(--subtext); font-size:12px;">የተመረጠ ክፍል፦ ባለ <span id="selected-room-price">10</span> ብር</p>
+    <!-- 2. DEPOSIT SCREEN (ብር ማስገቢያ ገፅ) -->
+    <div id="deposit-screen" class="screen">
         
-        <div class="card-grid" id="card-grid">
-            <!-- 1 to 400 Cards generated dynamically -->
+        <div class="notice-box">
+            <strong>ማሳሰቢያ:</strong> ከአንድ ባንክ ወደ ሌላ ባንክ (Other Bank) የተከለከለ ነው! ጥያቄዎን ለማስተናገድ እንደምንቸገር ከወዲሁ እንገልጻለን!
         </div>
 
-        <button class="btn-main" onclick="startBingoGame()">ወደ ጨዋታው ግባ (Play)</button>
-    </div>
-
-    <!-- 3. BINGO GAME SCREEN (የቢንጎ ጨዋታ ገፅ) -->
-    <div id="game-screen" class="screen">
-        <button onclick="showScreen('cards-screen')" style="background:none; border:none; color:var(--subtext); font-size:16px; margin-bottom:10px;">← ካርድ ቀይር</button>
-        <div style="text-align:center; margin-bottom:10px;">
-            <h2>🎲 KENA BINGO 🎲</h2>
-            <p style="color:var(--accent-yellow);">የተመረጠው ካርድ፦ #<span id="playing-card-num">1</span></p>
+        <div class="section-title">BANK ACCOUNTS</div>
+        
+        <div class="bank-grid">
+            <div class="bank-card">
+                <div class="bank-name">TELEBIRR</div>
+                <div class="acc-owner">Name: Tadios</div>
+                <div class="acc-num" id="tele1">0995726355</div>
+                <button class="btn-copy" onclick="copyToClipboard('0995726355')">COPY</button>
+            </div>
+            <div class="bank-card">
+                <div class="bank-name">TELEBIRR</div>
+                <div class="acc-owner">Name: Shitaye</div>
+                <div class="acc-num" id="tele2">0906047937</div>
+                <button class="btn-copy" onclick="copyToClipboard('0906047937')">COPY</button>
+            </div>
         </div>
 
-        <div class="bingo-board" id="bingo-board">
-            <div class="header-cell">B</div>
-            <div class="header-cell">I</div>
-            <div class="header-cell">N</div>
-            <div class="header-cell">G</div>
-            <div class="header-cell">O</div>
-            <!-- Dynamic 5x5 Grid Numbers -->
+        <div class="bank-grid">
+            <div class="bank-card">
+                <div class="bank-name">CBE BIRR</div>
+                <div class="acc-owner">Name: Abrham</div>
+                <div class="acc-num" id="cbe1">0987216895</div>
+                <button class="btn-copy" onclick="copyToClipboard('0987216895')">COPY</button>
+            </div>
         </div>
 
-        <button class="btn-main" style="background-color: var(--accent-green);" onclick="claimBingo()">🏆 BINGO!</button>
-    </div>
-
-    <!-- 4. LEADERBOARD SCREEN (አሸናፊዎች) -->
-    <div id="leaderboard-screen" class="screen">
-        <h3>🏆 የዛሬ አሸናፊዎች (Leaderboard)</h3>
         <div class="user-bar">
-            <div>1. አበበ</div>
-            <div class="balance">1,200 ብር</div>
+            <div>ዋና ሒሳብ</div>
+            <div class="balance">50.00 <small style="font-size:12px; color:var(--accent-yellow);">ብር</small></div>
         </div>
-        <div class="user-bar">
-            <div>2. ሳራ</div>
-            <div class="balance">850 ብር</div>
-        </div>
-        <div class="user-bar">
-            <div>3. ኬና</div>
-            <div class="balance">500 ብር</div>
-        </div>
-    </div>
 
-    <!-- 5. DEPOSIT / CASHOUT SCREEN -->
-    <div id="wallet-screen" class="screen">
-        <h3>💳 የብር ማስገቢያ እና ማውጫ</h3>
-        <div class="notice-bar">
-            የቴሌብር ወይም የCBE BIRR ሂሳብ በመጠቀም ገቢ/ወጪ ያድርጉ።
+        <div class="section-title">ገንዘብ ማስገባት</div>
+        <p style="font-size: 12px; color: var(--subtext); margin-top:0;">የላኩበትን ባንክ ይምረጡ</p>
+
+        <div class="method-select">
+            <div class="method-btn selected" id="m-telebirr" onclick="selectMethod('TELEBIRR')">TELEBIRR</div>
+            <div class="method-btn" id="m-cbe" onclick="selectMethod('CBEBIRR')">CBE Birr</div>
         </div>
-        <button class="btn-main" style="background-color:var(--accent-green);" onclick="sendTelegramAction('deposit')">📥 ብር አስገባ (Deposit)</button>
-        <button class="btn-main" style="background-color:var(--accent-red);" onclick="sendTelegramAction('cashout')">📤 ብር አውጣ (Cashout)</button>
+
+        <div class="input-group">
+            <label>የላኩትን ገንዘብ ይመዝግቡ</label>
+            <input type="number" class="input-field" placeholder="0.00" id="deposit-amount">
+        </div>
+
+        <div class="input-group">
+            <label>SMS (TRANSACTION ID) ያስገቡ</label>
+            <textarea class="input-field" rows="3" placeholder="Paste SMS here..." id="deposit-sms"></textarea>
+        </div>
+
+        <button class="btn-submit" onclick="submitDeposit()">ገንዘብ አስገባ</button>
+
+        <!-- TRANSACTION HISTORY -->
+        <div class="section-title" style="margin-top: 25px;">የግብይት ታሪክ</div>
+        
+        <div class="history-item">
+            <div>
+                <strong style="font-size: 13px;">DEPOSIT</strong><br>
+                <small style="color:var(--subtext);">CBEBirr • 9/24/2026</small>
+            </div>
+            <div style="text-align: right;">
+                <span style="color:var(--accent-green); font-weight:bold;">+100 ብር</span><br>
+                <span class="badge-approved">APPROVED</span>
+            </div>
+        </div>
+
+        <div class="history-item">
+            <div>
+                <strong style="font-size: 13px;">DEPOSIT</strong><br>
+                <small style="color:var(--subtext);">TELEBIRR • 9/24/2026</small>
+            </div>
+            <div style="text-align: right;">
+                <span style="color:var(--accent-green); font-weight:bold;">+190 ብር</span><br>
+                <span class="badge-approved">APPROVED</span>
+            </div>
+        </div>
+
     </div>
 
     <!-- BOTTOM NAVIGATION -->
     <div class="nav-bar">
-        <button class="nav-btn active" onclick="showScreen('home-screen')">🏠<br>ዋና ገፅ</button>
-        <button class="nav-btn" onclick="showScreen('wallet-screen')">📥<br>ብር አስገባ</button>
-        <button class="nav-btn" onclick="showScreen('wallet-screen')">📤<br>ብር አውጣ</button>
-        <button class="nav-btn" onclick="showScreen('leaderboard-screen')">📊<br>አሸናፊዎች</button>
+        <button class="nav-btn" onclick="showScreen('home-screen')">🏠<br>ዋና ገፅ</button>
+        <button class="nav-btn active" onclick="showScreen('deposit-screen')">📥<br>ብር አስገባ</button>
+        <button class="nav-btn" onclick="alert('የማውጫ ገፅ')">📤<br>ብር አውጣ</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        let selectedCardNumber = 1;
-        let roomPrice = 10;
+        let selectedPaymentMethod = 'TELEBIRR';
 
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
         }
 
-        function openCardSelection(price) {
-            roomPrice = price;
-            document.getElementById('selected-room-price').innerText = price;
-            generateCardGrid();
-            showScreen('cards-screen');
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert("ቁጥሩ ተኮፒ አድርጓል: " + text);
         }
 
-        // Generate Cards 1 to 400
-        function generateCardGrid() {
-            const grid = document.getElementById('card-grid');
-            grid.innerHTML = '';
-            for (let i = 1; i <= 400; i++) {
-                const item = document.createElement('div');
-                item.className = 'card-item' + (i === selectedCardNumber ? ' selected' : '');
-                item.innerText = '#' + i;
-                item.onclick = () => {
-                    document.querySelectorAll('.card-item').forEach(el => el.classList.remove('selected'));
-                    item.classList.add('selected');
-                    selectedCardNumber = i;
-                };
-                grid.appendChild(item);
+        function selectMethod(method) {
+            selectedPaymentMethod = method;
+            document.getElementById('m-telebirr').classList.remove('selected');
+            document.getElementById('m-cbe').classList.remove('selected');
+
+            if(method === 'TELEBIRR') {
+                document.getElementById('m-telebirr').classList.add('selected');
+            } else {
+                document.getElementById('m-cbe').classList.add('selected');
             }
         }
 
-        // Start Bingo Game with chosen card
-        function startBingoGame() {
-            document.getElementById('playing-card-num').innerText = selectedCardNumber;
-            generateBingoBoard();
-            showScreen('game-screen');
-        }
+        function submitDeposit() {
+            const amount = document.getElementById('deposit-amount').value;
+            const sms = document.getElementById('deposit-sms').value;
 
-        // Generate 5x5 Bingo Board
-        function generateBingoBoard() {
-            const board = document.getElementById('bingo-board');
-            const headers = board.querySelectorAll('.header-cell');
-            board.innerHTML = '';
-            headers.forEach(h => board.appendChild(h));
-
-            const sampleNumbers = [
-                [4, 30, 32, 54, 69],
-                [10, 25, 40, 49, 74],
-                [9, 23, "FREE", 59, 71],
-                [3, 26, 38, 57, 68],
-                [6, 29, 35, 53, 67]
-            ];
-
-            for (let r = 0; r < 5; r++) {
-                for (let c = 0; c < 5; c++) {
-                    const val = sampleNumbers[r][c];
-                    const cell = document.createElement('div');
-                    cell.className = 'cell' + (val === "FREE" ? ' free marked' : '');
-                    cell.innerText = val;
-                    if (val !== "FREE") {
-                        cell.onclick = () => cell.classList.toggle('marked');
-                    }
-                    board.appendChild(cell);
-                }
+            if(!amount || !sms) {
+                alert("እባክዎን የብር መጠን እና የ SMS መልእክቱን ያስገቡ!");
+                return;
             }
-        }
 
-        function claimBingo() {
-            alert(`ካርድ #${selectedCardNumber} BINGO ብለዋል! ጥያቄዎ ለሰርቨር ተልኳል።`);
-            sendTelegramAction('claim_bingo', { card: selectedCardNumber });
-        }
+            // Telegram Bot ጥያቄ መላክ
+            tg.sendData(JSON.stringify({
+                action: "deposit_request",
+                method: selectedPaymentMethod,
+                amount: amount,
+                sms: sms
+            }));
 
-        function sendTelegramAction(actionName, data = {}) {
-            tg.sendData(JSON.stringify({ action: actionName, ...data }));
+            alert("የገንዘብ ማስገቢያ ጥያቄዎ በትክክል ተልኳል!");
         }
     </script>
 </body>
