@@ -919,6 +919,7 @@
             document.getElementById('deposit-sms').value = '';
         }
 
+        // 🔄 የተስተካከለው የ WITHDRAWAL FUNCTION (ብር ወዲያውኑ ከ Wallet ይተነሳል)
         function submitWithdrawal() {
             const accInput = document.getElementById('withdraw-account').value.trim();
             const amountInput = document.getElementById('withdraw-amount').value.trim();
@@ -940,33 +941,51 @@
                 return;
             }
 
-            const now = new Date();
-            const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
-            const txId = db.ref().child('transactions').push().key;
+            // 1. ብሩን ከዩዘሩ Balance ላይ በ Transaction መቀነስ
+            const userBalanceRef = db.ref(`users/${userId}/balance`);
+            
+            userBalanceRef.transaction((current) => {
+                if ((current || 0) >= parsedAmount) {
+                    return current - parsedAmount;
+                } else {
+                    return; // ሒሳብ በቂ ካልሆነ ጥያቄውን አታሳልፈው
+                }
+            }, (error, committed) => {
+                if (error || !committed) {
+                    alert("የብር ማውጣት ጥያቄው አልተሳካም። እባክዎ እንደገና ይሞክሩ!");
+                    return;
+                }
 
-            db.ref('transactions/' + userId + '/' + txId).set({
-                id: txId,
-                type: 'WITHDRAWAL',
-                method: selectedWithdrawMethod,
-                account: accInput,
-                amount: parsedAmount.toFixed(2),
-                date: dateStr,
-                status: 'PENDING'
+                // 2. ብሩ ከተቀነሰ በኋላ Transaction መዝግብ
+                const now = new Date();
+                const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
+                const txId = db.ref().child('transactions').push().key;
+
+                db.ref('transactions/' + userId + '/' + txId).set({
+                    id: txId,
+                    type: 'WITHDRAWAL',
+                    method: selectedWithdrawMethod,
+                    account: accInput,
+                    amount: parsedAmount.toFixed(2),
+                    date: dateStr,
+                    status: 'PENDING'
+                });
+
+                // 3. ለቴሌግራም ቦት መረጃ መላክ
+                tg.sendData(JSON.stringify({
+                    action: "withdraw_request",
+                    tx_id: txId,
+                    user_id: userId,
+                    method: selectedWithdrawMethod,
+                    account: accInput,
+                    amount: parsedAmount.toFixed(2)
+                }));
+
+                alert("የብር ማውጣት ጥያቄዎ ተልኳል! ከሒሳብዎ ላይ ተቀንሷል።");
+
+                document.getElementById('withdraw-account').value = '';
+                document.getElementById('withdraw-amount').value = '';
             });
-
-            tg.sendData(JSON.stringify({
-                action: "withdraw_request",
-                tx_id: txId,
-                user_id: userId,
-                method: selectedWithdrawMethod,
-                account: accInput,
-                amount: parsedAmount.toFixed(2)
-            }));
-
-            alert("የብር ማውጣት ጥያቄዎ ተልኳል! በቅርቡ አስተዳዳሪው ያረጋግጥልዎታል።");
-
-            document.getElementById('withdraw-account').value = '';
-            document.getElementById('withdraw-amount').value = '';
         }
     </script>
 </body>
