@@ -256,12 +256,12 @@
         </div>
 
         <div class="input-group">
-            <label>የላኩትን ገንዘብ ይመዝግቡ</label>
-            <input type="number" class="input-field" placeholder="0.00" id="deposit-amount">
+            <label>የላኩትን ገንዘብ ይመዝግቡ (በቁጥር ብቻ)</label>
+            <input type="number" class="input-field" placeholder="0.00" id="deposit-amount" min="1" step="any">
         </div>
 
         <div class="input-group">
-            <label>SMS / TRANSACTION ID</label>
+            <label>SMS / TRANSACTION ID (ፊደላት እና ቁጥሮች ብቻ)</label>
             <textarea class="input-field" rows="3" placeholder="Paste full SMS or Transaction ID here..." id="deposit-sms"></textarea>
         </div>
 
@@ -388,11 +388,21 @@
         }
 
         function submitDeposit() {
-            const amount = document.getElementById('deposit-amount').value;
-            const sms = document.getElementById('deposit-sms').value;
+            const amountInput = document.getElementById('deposit-amount').value.trim();
+            const smsInput = document.getElementById('deposit-sms').value.trim();
 
-            if(!amount || !sms) {
-                alert("እባክዎን የብር መጠን እና የ SMS መልእክቱን/Transaction ID ያስገቡ!");
+            const parsedAmount = parseFloat(amountInput);
+
+            // 1. የብር መጠን ማረጋገጫ (Validation)
+            if (!amountInput || isNaN(parsedAmount) || parsedAmount <= 0) {
+                alert("እባክዎን ትክክለኛ የብር መጠን ያስገቡ!");
+                return;
+            }
+
+            // 2. Transaction ID ማረጋገጫ (Validation - ፊደልና ቁጥር ብቻ)
+            const txRegex = /^[a-zA-Z0-9\s:-]+$/;
+            if (!smsInput || !txRegex.test(smsInput)) {
+                alert("እባክዎን ትክክለኛ የ SMS መልእክት ወይም Transaction ID ብቻ ያስገቡ!");
                 return;
             }
 
@@ -404,8 +414,8 @@
             db.ref('transactions/' + userId + '/' + txId).set({
                 id: txId,
                 method: selectedPaymentMethod,
-                amount: amount,
-                sms_text: sms,
+                amount: parsedAmount.toFixed(2),
+                sms_text: smsInput,
                 date: dateStr,
                 status: 'PENDING'
             });
@@ -416,8 +426,8 @@
                 tx_id: txId,
                 user_id: userId,
                 method: selectedPaymentMethod,
-                amount: amount,
-                sms_text: sms
+                amount: parsedAmount.toFixed(2),
+                sms_text: smsInput
             }));
 
             alert("የገንዘብ ማስገቢያ ጥያቄዎ በትክክል ተልኳል!");
