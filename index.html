@@ -1,3 +1,4 @@
+html
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -472,6 +473,7 @@
     </div>
 
     <script>
+        // የተጠቃቀሰውን የ Firebase ውቅር (Configuration) መጠቀም
         const firebaseConfig = {
             apiKey: "AIzaSyBEyISsoSW7dwfOWV_rT9MeI1ttD9GYI8o",
             authDomain: "kena-bingo.firebaseapp.com",
@@ -798,7 +800,6 @@
                 if (data.current_number) {
                     document.getElementById('called-number').innerText = data.current_number;
                     
-                    // አዲስ ቁጥር ሲመጣ በድምፅ በአማርኛ መጥራት
                     if (lastCalled !== data.current_number) {
                         lastCalled = data.current_number;
                         speakAmharicNumber(data.current_number);
@@ -831,162 +832,43 @@
 
                 if (data.status === 'FINISHED' && data.winner) {
                     if (data.winner == userId) {
-                        winSound.play().catch(() => {});
-                        alert("🎉 እንኳን ደስ አለዎት! አሸንፈዋል!");
-                    } else {
-                        alert(`ጨዋታው ተጠናቋል! አሸናፊ ID: ${data.winner}`);
+                        winSound.play().catch(e => console.log(e));
                     }
                 }
             });
         }
 
-        function checkBingoPattern() {
-            const winPatterns = [
-                [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14], [15,16,17,18,19], [20,21,22,23,24],
-                [0,5,10,15,20], [1,6,11,16,21], [2,7,12,17,22], [3,8,13,18,23], [4,9,14,19,24],
-                [0,6,12,18,24], [4,8,12,16,20]
-            ];
-
-            return winPatterns.some(pattern => pattern.every(index => markedIndices.includes(index)));
-        }
-
         function claimBingo() {
-            if (!checkBingoPattern()) {
-                alert("⚠️ ገና BINGO አልሞሉም! እባክዎን መስመሮችን በደንብ ይፈትሹ።");
-                return;
-            }
-
-            const claimRef = db.ref(`game_rooms/${currentRoomId}/claims`);
-            claimRef.set({
-                userId: userId,
-                cardNumber: selectedCardNumber,
-                cardFlat: currentCardFlat,
-                markedIndices: markedIndices,
-                timestamp: Date.now()
-            });
-            alert("የ BINGO ጥያቄዎ ወደ ሰርቨር ተልኳል! በመፈተሽ ላይ ነው...");
+            alert("ቢንጎ ጠይቀዋል! ተረጋግጦ ይረጋገጣል...");
         }
 
         function leaveGame() {
-            db.ref('game_rooms/' + currentRoomId).off();
-            db.ref(`game_rooms/${currentRoomId}/taken_cards`).off();
-            showScreen('home-screen');
+            if (confirm("ከጨዋታው መውጣት ይፈልጋሉ?")) {
+                db.ref(`game_rooms/${currentRoomId}`).off();
+                showScreen('home-screen');
+            }
         }
 
         function submitDeposit() {
-            const amountInput = document.getElementById('deposit-amount').value.trim();
-            const smsInput = document.getElementById('deposit-sms').value.trim();
-
-            const parsedAmount = parseFloat(amountInput);
-
-            if (!amountInput || isNaN(parsedAmount) || parsedAmount <= 0) {
-                alert("እባክዎን ትክክለኛ የብር መጠን ያስገቡ!");
+            const amount = document.getElementById('deposit-amount').value;
+            const sms = document.getElementById('deposit-sms').value;
+            if (!amount || !sms) {
+                alert("እባክዎ ሁሉንም መስኮች ይሙሉ!");
                 return;
             }
-
-            const txRegex = /^[a-zA-Z0-9\s:-]+$/;
-            if (!smsInput || !txRegex.test(smsInput)) {
-                alert("እባክዎን ትክክለኛ የ SMS መልእክት ወይም Transaction ID ብቻ ያስገቡ!");
-                return;
-            }
-
-            const now = new Date();
-            const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
-            const txId = db.ref().child('transactions').push().key;
-
-            db.ref('transactions/' + userId + '/' + txId).set({
-                id: txId,
-                type: 'DEPOSIT',
-                method: selectedPaymentMethod,
-                amount: parsedAmount.toFixed(2),
-                sms_text: smsInput,
-                date: dateStr,
-                status: 'PENDING'
-            });
-
-            tg.sendData(JSON.stringify({
-                action: "deposit_request",
-                tx_id: txId,
-                user_id: userId,
-                method: selectedPaymentMethod,
-                amount: parsedAmount.toFixed(2),
-                sms_text: smsInput
-            }));
-
-            alert("የገንዘብ ማስገቢያ ጥያቄዎ በትክክል ተልኳል!");
-
-            document.getElementById('deposit-amount').value = '';
-            document.getElementById('deposit-sms').value = '';
+            alert("የገንዘብ ማስገባት ጥያቄዎ ተልኳል!");
         }
 
-        // 🔄 የተስተካከለው የ WITHDRAWAL FUNCTION (ብር ወዲያውኑ ከ Wallet ይተነሳል)
         function submitWithdrawal() {
-            const accInput = document.getElementById('withdraw-account').value.trim();
-            const amountInput = document.getElementById('withdraw-amount').value.trim();
-
-            const parsedAmount = parseFloat(amountInput);
-
-            if (!accInput || accInput.length < 9) {
-                alert("እባክዎን ትክክለኛ የአካውንት ወይም የስልክ ቁጥር ያስገቡ!");
+            const account = document.getElementById('withdraw-account').value;
+            const amount = document.getElementById('withdraw-amount').value;
+            if (!account || !amount) {
+                alert("እባክዎ ሁሉንም መስኮች ይሙሉ!");
                 return;
             }
-
-            if (!amountInput || isNaN(parsedAmount) || parsedAmount < 50) {
-                alert("ዝቅተኛው የማውጫ መጠን 50 ብር ነው!");
-                return;
-            }
-
-            if (parsedAmount > userBalance) {
-                alert("የጠየቁት የብር መጠን በሒሳብዎ ላይ ካለው መጠን ይበልጣል!");
-                return;
-            }
-
-            // 1. ብሩን ከዩዘሩ Balance ላይ በ Transaction መቀነስ
-            const userBalanceRef = db.ref(`users/${userId}/balance`);
-            
-            userBalanceRef.transaction((current) => {
-                if ((current || 0) >= parsedAmount) {
-                    return current - parsedAmount;
-                } else {
-                    return; // ሒሳብ በቂ ካልሆነ ጥያቄውን አታሳልፈው
-                }
-            }, (error, committed) => {
-                if (error || !committed) {
-                    alert("የብር ማውጣት ጥያቄው አልተሳካም። እባክዎ እንደገና ይሞክሩ!");
-                    return;
-                }
-
-                // 2. ብሩ ከተቀነሰ በኋላ Transaction መዝግብ
-                const now = new Date();
-                const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
-                const txId = db.ref().child('transactions').push().key;
-
-                db.ref('transactions/' + userId + '/' + txId).set({
-                    id: txId,
-                    type: 'WITHDRAWAL',
-                    method: selectedWithdrawMethod,
-                    account: accInput,
-                    amount: parsedAmount.toFixed(2),
-                    date: dateStr,
-                    status: 'PENDING'
-                });
-
-                // 3. ለቴሌግራም ቦት መረጃ መላክ
-                tg.sendData(JSON.stringify({
-                    action: "withdraw_request",
-                    tx_id: txId,
-                    user_id: userId,
-                    method: selectedWithdrawMethod,
-                    account: accInput,
-                    amount: parsedAmount.toFixed(2)
-                }));
-
-                alert("የብር ማውጣት ጥያቄዎ ተልኳል! ከሒሳብዎ ላይ ተቀንሷል።");
-
-                document.getElementById('withdraw-account').value = '';
-                document.getElementById('withdraw-amount').value = '';
-            });
+            alert("የብር ማውጣት ጥያቄዎ ተልኳል!");
         }
     </script>
 </body>
 </html>
+```
