@@ -695,7 +695,7 @@
                 return;
             }
 
-            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በፈቃደኝነት በ ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
+            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በፈቃደኝነት በበት ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
                 const userBalanceRef = db.ref(`users/${userId}/balance`);
                 userBalanceRef.transaction((current) => {
                     if ((current || 0) >= currentRoomPrice) {
@@ -841,7 +841,6 @@
                     if (lastCalled !== data.current_number) {
                         lastCalled = data.current_number;
                         
-                        // በየ 3 ሰከንድ (3000 ሚሊሰከንድ) ዴይሊ ድምፁ እንዲጠራ ማድረግ
                         setTimeout(() => {
                             speakAmharicNumber(data.current_number);
                         }, 3000);
@@ -867,7 +866,6 @@
             }
         }
 
-        // 📥 የገንዘብ ማስገባት (Deposit) ተግባር ወደ ፋየርቤዝ መላኪያ
         function submitDeposit() {
             const amountInput = document.getElementById('deposit-amount').value;
             const smsInput = document.getElementById('deposit-sms').value;
@@ -912,7 +910,6 @@
                 });
         }
 
-        // 📤 የብር ማውጣት (Withdraw) ተግባር ወደ ፋየርቤዝ መላኪያ
         function submitWithdrawal() {
             const accountInput = document.getElementById('withdraw-account').value;
             const amountInput = document.getElementById('withdraw-amount').value;
@@ -963,3 +960,4 @@
         }
     </script>
 </body>
+</html>
