@@ -338,7 +338,7 @@
     <div id="card-selection-screen" class="screen">
         <div class="user-bar">
             <div>የተመረጠ ክፍል፡ <span id="selected-room-title">room_10</span></div>
-            <button onclick="showScreen('home-screen')" style="background:#143547; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">ተመለስ</button>
+            <button onclick="leaveCardSelection()" style="background:#143547; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">ተመለስ</button>
         </div>
 
         <div class="section-title">ካርድ ይምረጡ (1 - 400)</div>
@@ -464,6 +464,7 @@
         let userName = "Demo User";
         let userBalance = 0; 
         let currentRoomId = "room_10";
+        let currentRoomPrice = 10;
         let selectedCardNumber = null;
         let currentCardFlat = [];
         let markedIndices = [];
@@ -514,11 +515,9 @@
                 });
             });
 
-            // ⏱️ ለእያንዳንዱ ክፍል በዋናው ገፅ ላይ የሰከንድ ቆጣሪ ማገናኛ
             listenToHomeRoomTimers();
         }
 
-        // በዋናው ገፅ ላይ የእያንዳንዱን ክፍል ሰከንድ በ Real-time የሚከታተል ፋንክሽን
         function listenToHomeRoomTimers() {
             const rooms = ['room_50', 'room_20', 'room_10', 'room_5'];
 
@@ -589,6 +588,7 @@
                 return;
             }
 
+            currentRoomPrice = price;
             currentRoomId = `room_${price}`;
             document.getElementById('selected-room-title').innerText = currentRoomId;
             
@@ -622,45 +622,72 @@
             });
         }
 
+        function leaveCardSelection() {
+            db.ref(`game_rooms/${currentRoomId}/taken_cards`).off();
+            showScreen('home-screen');
+        }
+
         function selectCardAndEnterGame(cardNumber, roomId) {
-            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። ወደ ጨዋታው መግባት ይፈልጋሉ?`)) {
-                selectedCardNumber = cardNumber;
+            if (userBalance < currentRoomPrice) {
+                alert("በቂ ሒሳብ የለዎትም!");
+                return;
+            }
 
-                db.ref(`game_rooms/${roomId}/taken_cards/${cardNumber}`).set({
-                    userId: userId,
-                    userName: userName,
-                    timestamp: Date.now()
+            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በ ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
+                
+                // 1. የካርድ ክፍያ ከአካውንት ላይ መቀነስ (Deduce balance)
+                const userBalanceRef = db.ref(`users/${userId}/balance`);
+                userBalanceRef.transaction((current) => {
+                    if ((current || 0) >= currentRoomPrice) {
+                        return current - currentRoomPrice;
+                    } else {
+                        return; // Abort transaction if insufficient
+                    }
+                }, (error, committed) => {
+                    if (error || !committed) {
+                        alert("ሒሳብ መቀነስ አልተሳካም። እባክዎ እንደገና ይሞክሩ!");
+                        return;
+                    }
+
+                    // 2. ካርዱን መያዝ (Reserve Card)
+                    selectedCardNumber = cardNumber;
+                    db.ref(`game_rooms/${roomId}/taken_cards/${cardNumber}`).set({
+                        userId: userId,
+                        userName: userName,
+                        timestamp: Date.now()
+                    });
+
+                    document.getElementById('game-room-name').innerText = `${roomId} (ካርድ #${cardNumber})`;
+
+                    generateBingoCardForNumber(cardNumber);
+                    listenToRoomUpdates(roomId);
+                    showScreen('game-screen');
                 });
-
-                document.getElementById('game-room-name').innerText = `${roomId} (ካርድ #${cardNumber})`;
-
-                generateBingoCardForNumber(cardNumber);
-                listenToRoomUpdates(roomId);
-                showScreen('game-screen');
             }
         }
 
         function generateBingoCardForNumber(seed) {
             function seededRandom(s) {
-                let x = Math.sin(s++) * 10000;
+                let x = Math.sin(s) * 10000;
                 return x - Math.floor(x);
             }
 
-            function getNums(min, max, count, s) {
+            function getNums(min, max, count, colSeed) {
                 let nums = [];
-                let localSeed = s;
+                let s = colSeed;
                 while (nums.length < count) {
-                    let r = Math.floor(seededRandom(localSeed++) * (max - min + 1)) + min;
+                    let r = Math.floor(seededRandom(s++) * (max - min + 1)) + min;
                     if (!nums.includes(r)) nums.push(r);
                 }
                 return nums;
             }
 
-            let B = getNums(1, 15, 5, seed * 1);
-            let I = getNums(16, 30, 5, seed * 2);
-            let N = getNums(31, 45, 5, seed * 3);
-            let G = getNums(46, 60, 5, seed * 4);
-            let O = getNums(61, 75, 5, seed * 5);
+            // ተደራራቢ Seed እኩል እንዳይሆን የተለዩ ፕራይም ቁጥሮች (Prime Multipliers) መጠቀም
+            let B = getNums(1, 15, 5, seed * 10007);
+            let I = getNums(16, 30, 5, seed * 20011);
+            let N = getNums(31, 45, 5, seed * 30013);
+            let G = getNums(46, 60, 5, seed * 40031);
+            let O = getNums(61, 75, 5, seed * 50021);
 
             N[2] = "FREE";
 
@@ -724,20 +751,16 @@
                 if (data.status === 'WAITING' && data.start_time) {
                     timerBox.style.display = 'inline-block';
                     
-                    const updateCountdown = () => {
-                        const now = Date.now();
-                        const remainingMs = data.start_time - now;
-                        const remainingSec = Math.ceil(remainingMs / 1000);
+                    const now = Date.now();
+                    const remainingMs = data.start_time - now;
+                    const remainingSec = Math.ceil(remainingMs / 1000);
 
-                        if (remainingSec > 0) {
-                            timerCount.innerText = remainingSec;
-                        } else {
-                            timerBox.style.display = 'none';
-                            document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
-                        }
-                    };
-
-                    updateCountdown();
+                    if (remainingSec > 0) {
+                        timerCount.innerText = remainingSec;
+                    } else {
+                        timerBox.style.display = 'none';
+                        document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
+                    }
                 } else {
                     timerBox.style.display = 'none';
                 }
@@ -756,6 +779,7 @@
             const claimRef = db.ref(`game_rooms/${currentRoomId}/claims`);
             claimRef.set({
                 userId: userId,
+                cardNumber: selectedCardNumber,
                 cardFlat: currentCardFlat,
                 markedIndices: markedIndices,
                 timestamp: Date.now()
