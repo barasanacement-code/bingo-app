@@ -218,6 +218,29 @@
             color: var(--accent-yellow);
             margin: 5px 0;
         }
+
+        /* Called Numbers History Horizontal Strip */
+        .called-history-container {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 8px 0;
+            margin-bottom: 10px;
+            max-width: 340px;
+            margin-left: auto;
+            margin-right: auto;
+            white-space: nowrap;
+        }
+        .called-badge {
+            background-color: var(--inner-card);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-yellow);
+            font-weight: bold;
+            font-size: 14px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
         
         .timer-container {
             background: rgba(231, 76, 60, 0.15);
@@ -443,8 +466,14 @@
             <div style="font-size: 13px; color: var(--subtext);">የክፍል ስም፡ <span id="game-room-name">room_10</span></div>
             <div class="called-num-display" id="called-number">--</div>
             
+            <!-- Called Numbers History Horizontal Strip -->
+            <div style="font-size: 11px; color: var(--subtext); text-align: left; margin-top: 8px;">የተጠሩ ቁጥሮች ታሪክ (History):</div>
+            <div id="called-numbers-history" class="called-history-container">
+                <span style="font-size: 11px; color: var(--subtext);">ገና ምንም ቁጥር አልተጠራም</span>
+            </div>
+
             <div id="timer-box" class="timer-container" style="display: none;">
-                ⏱️ ጨዋታው ለመጀመር፡ <span id="timer-count" class="timer-text">0</span> ሰከንድ
+                ⏱️ ጨዋታው ለመጀመር / 42s Countdown: <span id="timer-count" class="timer-text">0</span> ሰከንድ
             </div>
 
             <div style="font-size: 12px; color: var(--accent-blue); margin-top:5px;" id="game-status-text">ጨዋታው እየተጠበቀ ነው...</div>
@@ -511,13 +540,33 @@
         // 🔊 የድምፅ ውጤቶች
         const winSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
 
-        // 🔊 የተጠሩ ቁጥሮችን በአማርኛ በድምፅ የመጥራት ተግባር (Text-to-Speech)
+        // 🔊 የተጠሩ ቁጥሮችን ከየዓምዳቸው (B, I, N, G, O) ፊደል ጋር በአማርኛ በድምፅ የመጥራት ተግባር
         function speakAmharicNumber(number) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(number.toString());
+                
+                let letter = '';
+                let spokenText = '';
+
+                // ቁጥሩ የየትኛው ዓምድ እንደሆነ በመለየት ፊደሉን መምረጥ
+                if (number >= 1 && number <= 15) {
+                    letter = 'ቢ';
+                } else if (number >= 16 && number <= 30) {
+                    letter = 'አይ';
+                } else if (number >= 31 && number <= 45) {
+                    letter = 'ኢን';
+                } else if (number >= 46 && number <= 60) {
+                    letter = 'ጂ';
+                } else if (number >= 61 && number <= 75) {
+                    letter = 'ኦ';
+                }
+
+                // ለድምፅ ማቀናበሪያ የሚሆን 텍ስት (ለምሳሌ፦ "ቢ 12")
+                spokenText = `${letter} ${number}`;
+
+                const utterance = new SpeechSynthesisUtterance(spokenText);
                 utterance.lang = 'am-ET';
-                utterance.rate = 0.85;
+                utterance.rate = 0.8;  // በትንሹ ቀስ ብሎ እንዲናገር
                 utterance.pitch = 1.0;
                 window.speechSynthesis.speak(utterance);
             }
@@ -695,7 +744,7 @@
                 return;
             }
 
-            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በፈቃደኝነት በበት ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
+            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በፈቃደኝነት በ ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
                 const userBalanceRef = db.ref(`users/${userId}/balance`);
                 userBalanceRef.transaction((current) => {
                     if ((current || 0) >= currentRoomPrice) {
@@ -792,11 +841,32 @@
 
         function listenToRoomUpdates(roomId) {
             let lastCalled = null;
-            let countdownTimer = null;
 
             db.ref('game_rooms/' + roomId).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
+
+                if (data.current_number) {
+                    document.getElementById('called-number').innerText = data.current_number;
+                    
+                    if (lastCalled !== data.current_number) {
+                        lastCalled = data.current_number;
+                        speakAmharicNumber(data.current_number);
+                    }
+                }
+
+                // Render Called Numbers History List
+                if (data.called_numbers) {
+                    const historyContainer = document.getElementById('called-numbers-history');
+                    historyContainer.innerHTML = '';
+                    data.called_numbers.forEach(num => {
+                        const badge = document.createElement('span');
+                        badge.className = 'called-badge';
+                        badge.innerText = num;
+                        historyContainer.appendChild(badge);
+                    });
+                    historyContainer.scrollLeft = historyContainer.scrollWidth;
+                }
 
                 if (data.status) {
                     document.getElementById('game-status-text').innerText = "ሁኔታ፡ " + data.status;
@@ -805,46 +875,21 @@
                 const timerBox = document.getElementById('timer-box');
                 const timerCount = document.getElementById('timer-count');
 
-                // ⏱️ ከፍ ካለበት ሰከንድ ጀምሮ ወደ ታች (እስከ 00) መቁጠር (Countdown)
                 if (data.status === 'WAITING' && data.start_time) {
                     timerBox.style.display = 'inline-block';
                     
-                    if (!countdownTimer) {
-                        countdownTimer = setInterval(() => {
-                            const now = Date.now();
-                            const remainingMs = data.start_time - now;
-                            const remainingSec = Math.ceil(remainingMs / 1000);
+                    const now = Date.now();
+                    const remainingMs = data.start_time - now;
+                    const remainingSec = Math.ceil(remainingMs / 1000);
 
-                            if (remainingSec > 0) {
-                                timerCount.innerText = remainingSec;
-                            } else {
-                                timerCount.innerText = 0;
-                                clearInterval(countdownTimer);
-                                countdownTimer = null;
-                                timerBox.style.display = 'none';
-                                document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
-                            }
-                        }, 1000);
+                    if (remainingSec > 0) {
+                        timerCount.innerText = remainingSec;
+                    } else {
+                        timerBox.style.display = 'none';
+                        document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
                     }
                 } else {
                     timerBox.style.display = 'none';
-                    if (countdownTimer) {
-                        clearInterval(countdownTimer);
-                        countdownTimer = null;
-                    }
-                }
-
-                // 🔊 የቢንጎ ቁጥሮች በየ 3 ሰከንድ በድምፅ (በአማርኛ) እንዲወጡ ማድረግ
-                if (data.status === 'PLAYING' && data.current_number) {
-                    document.getElementById('called-number').innerText = data.current_number;
-                    
-                    if (lastCalled !== data.current_number) {
-                        lastCalled = data.current_number;
-                        
-                        setTimeout(() => {
-                            speakAmharicNumber(data.current_number);
-                        }, 3000);
-                    }
                 }
 
                 if (data.status === 'FINISHED' && data.winner) {
@@ -866,6 +911,7 @@
             }
         }
 
+        // 📥 የገንዘብ ማስገባት (Deposit) ተግባር ወደ ፋየርቤዝ መላኪያ
         function submitDeposit() {
             const amountInput = document.getElementById('deposit-amount').value;
             const smsInput = document.getElementById('deposit-sms').value;
@@ -910,6 +956,7 @@
                 });
         }
 
+        // 📤 የብር ማውጣት (Withdraw) ተግባር ወደ ፋየርቤዝ መላኪያ
         function submitWithdrawal() {
             const accountInput = document.getElementById('withdraw-account').value;
             const amountInput = document.getElementById('withdraw-amount').value;
