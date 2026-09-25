@@ -1,4 +1,9 @@
-html
+<ElicitationsGroup>
+የ `submitDeposit()` እና የ `submitWithdrawal()` (የብር ማውጣት) ተግባራትን ጨምሮ ሙሉውን ኮድ አስተካክዬ አስቀምጬዋለሁ። አሁን ተጠቃሚው ብር ሲያስገባም ሆነ ሲያወጣ ጥያቄው በቀጥታ ወደ Firebase (`transactions` እና `admin_requests`) ይላካል።
+
+ይህንን ሙሉ ኮድ ኮፒ (Copy) አድርገው በ `index.html` ፋይልዎ ውስጥ ሙሉ በሙሉ መተካት ይችላሉ፡
+
+```html
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -473,7 +478,7 @@ html
     </div>
 
     <script>
-        // የተጠቃቀሰውን የ Firebase ውቅር (Configuration) መጠቀም
+        // የ Firebase ውቅር (Configuration)
         const firebaseConfig = {
             apiKey: "AIzaSyBEyISsoSW7dwfOWV_rT9MeI1ttD9GYI8o",
             authDomain: "kena-bingo.firebaseapp.com",
@@ -515,10 +520,10 @@ html
         // 🔊 የተጠሩ ቁጥሮችን በአማርኛ በድምፅ የመጥራት ተግባር (Text-to-Speech)
         function speakAmharicNumber(number) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // የቀደመውን ድምፅ ማቋረጥ
+                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(number.toString());
-                utterance.lang = 'am-ET'; // አማርኛ ቋንቋ
-                utterance.rate = 0.85; // ለንብበቱ ተስማሚ ፍጥነት
+                utterance.lang = 'am-ET';
+                utterance.rate = 0.85;
                 utterance.pitch = 1.0;
                 window.speechSynthesis.speak(utterance);
             }
@@ -695,7 +700,7 @@ html
                 return;
             }
 
-            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በ ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
+            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በፈቃደኝነት በ ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
                 const userBalanceRef = db.ref(`users/${userId}/balance`);
                 userBalanceRef.transaction((current) => {
                     if ((current || 0) >= currentRoomPrice) {
@@ -849,24 +854,100 @@ html
             }
         }
 
+        // 📥 የገንዘብ ማስገባት (Deposit) ተግባር ወደ ፋየርቤዝ መላኪያ
         function submitDeposit() {
-            const amount = document.getElementById('deposit-amount').value;
-            const sms = document.getElementById('deposit-sms').value;
-            if (!amount || !sms) {
-                alert("እባክዎ ሁሉንም መስኮች ይሙሉ!");
+            const amountInput = document.getElementById('deposit-amount').value;
+            const smsInput = document.getElementById('deposit-sms').value;
+
+            if (!amountInput || !smsInput) {
+                alert("እባክዎ የብር መጠን እና የ SMS መልዕክት/ትራንዛክሽን ቁጥሩን በትክክል ይሙሉ!");
                 return;
             }
-            alert("የገንዘብ ማስገባት ጥያቄዎ ተልኳል!");
+
+            const amount = parseFloat(amountInput);
+            if (isNaN(amount) || amount <= 0) {
+                alert("እባክዎ ትክክለኛ የብር መጠን ያስገቡ!");
+                return;
+            }
+
+            const transactionId = db.ref('transactions/' + userId).push().key;
+
+            const depositData = {
+                id: transactionId,
+                userId: userId,
+                userName: userName,
+                type: 'DEPOSIT',
+                method: selectedPaymentMethod,
+                amount: amount,
+                sms: smsInput,
+                status: 'PENDING',
+                date: new Date().toLocaleString()
+            };
+
+            db.ref('transactions/' + userId + '/' + transactionId).set(depositData)
+                .then(() => {
+                    return db.ref('admin_requests/deposits/' + transactionId).set(depositData);
+                })
+                .then(() => {
+                    alert("የገንዘብ ማስገባት ጥያቄዎ በተሳካ ሁኔታ ተልኳል! አድሚኑ እስኪረጋገጥ በትዕግስት ይጠብቁ።");
+                    document.getElementById('deposit-amount').value = '';
+                    document.getElementById('deposit-sms').value = '';
+                })
+                .catch((error) => {
+                    console.error("Error saving deposit:", error);
+                    alert("ጥያቄውን መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ!");
+                });
         }
 
+        // 📤 የብር ማውጣት (Withdraw) ተግባር ወደ ፋየርቤዝ መላኪያ
         function submitWithdrawal() {
-            const account = document.getElementById('withdraw-account').value;
-            const amount = document.getElementById('withdraw-amount').value;
-            if (!account || !amount) {
-                alert("እባክዎ ሁሉንም መስኮች ይሙሉ!");
+            const accountInput = document.getElementById('withdraw-account').value;
+            const amountInput = document.getElementById('withdraw-amount').value;
+
+            if (!accountInput || !amountInput) {
+                alert("እባክዎ የአካውንት ቁጥር እና የብር መጠን ይሙሉ!");
                 return;
             }
-            alert("የብር ማውጣት ጥያቄዎ ተልኳል!");
+
+            const amount = parseFloat(amountInput);
+            if (isNaN(amount) || amount < 50) {
+                alert("ለማውጣት ቢያንስ 50 ብር ሊኖርዎት ይገባል!");
+                return;
+            }
+
+            if (amount > userBalance) {
+                alert("በሒሳብዎ ውስጥ ያለው ገንዘብ ከጠየቁት መጠን ያነሰ ነው!");
+                return;
+            }
+
+            const transactionId = db.ref('transactions/' + userId).push().key;
+
+            const withdrawData = {
+                id: transactionId,
+                userId: userId,
+                userName: userName,
+                type: 'WITHDRAWAL',
+                method: selectedWithdrawMethod,
+                account: accountInput,
+                amount: amount,
+                status: 'PENDING',
+                date: new Date().toLocaleString()
+            };
+
+            // የብር ማውጣት ጥያቄ ሲላክ ከሒሳብ ላይ ወዲያውኑ እንዳይቀነስ ወይም እንዲቀነስ (በዚህ መልኩ ለአድሚን ይላካል)
+            db.ref('transactions/' + userId + '/' + transactionId).set(withdrawData)
+                .then(() => {
+                    return db.ref('admin_requests/withdrawals/' + transactionId).set(withdrawData);
+                })
+                .then(() => {
+                    alert("የብር ማውጣት ጥያቄዎ ተልኳል! አድሚኑ ሲያረጋግጥ አካውንትዎ ይላካል።");
+                    document.getElementById('withdraw-account').value = '';
+                    document.getElementById('withdraw-amount').value = '';
+                })
+                .catch((error) => {
+                    console.error("Error saving withdrawal:", error);
+                    alert("ጥያቄውን መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ!");
+                });
         }
     </script>
 </body>
