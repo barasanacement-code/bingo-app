@@ -6,7 +6,7 @@
     <title>KENA Bingo</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Firebase SDK Scripts (Compat version) -->
+    <!-- Firebase SDK Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -206,6 +206,22 @@
             color: var(--accent-yellow);
             margin: 5px 0;
         }
+        
+        /* ⏱️ COUNTDOWN TIMER STYLING */
+        .timer-container {
+            background: rgba(231, 76, 60, 0.15);
+            border: 1px solid var(--accent-red);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            display: inline-block;
+        }
+        .timer-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--accent-red);
+        }
+
         .bingo-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -255,6 +271,25 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(241, 196, 15, 0.3);
         }
+
+        /* 🔴 CARD SELECTION STYLING */
+        .card-select-btn {
+            background-color: var(--inner-card);
+            border: 1px solid #1c4357;
+            color: #fff;
+            padding: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .card-select-btn.taken {
+            background-color: var(--accent-red) !important;
+            color: #fff !important;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -272,10 +307,25 @@
         </div>
 
         <div class="section-title">ጨዋታ ይምረጡ</div>
-        <button class="room-btn" onclick="openGame(50)">💵 ባለ 50 ብር ጨዋታ (ምዝገባ ላይ)</button>
-        <button class="room-btn" onclick="openGame(20)">💵 ባለ 20 ብር ጨዋታ (8 ሴክንድ)</button>
-        <button class="room-btn" onclick="openGame(10)">💵 ባለ 10 ብር ጨዋታ (room_10)</button>
-        <button class="room-btn" onclick="openGame(5)">💵 ባለ 5 ብር ጨዋታ (ምዝገባ ላይ)</button>
+        <button class="room-btn" onclick="openGame(50)">💵 ባለ 50 ብር ጨዋታ</button>
+        <button class="room-btn" onclick="openGame(20)">💵 ባለ 20 ብር ጨዋታ</button>
+        <button class="room-btn" onclick="openGame(10)">💵 ባለ 10 ብር ጨዋታ</button>
+        <button class="room-btn" onclick="openGame(5)">💵 ባለ 5 ብር ጨዋታ</button>
+    </div>
+
+    <!-- 1.5 CARD SELECTION SCREEN (1 - 400 Grid) -->
+    <div id="card-selection-screen" class="screen">
+        <div class="user-bar">
+            <div>የተመረጠ ክፍል፡ <span id="selected-room-title">room_10</span></div>
+            <button onclick="showScreen('home-screen')" style="background:#143547; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">ተመለስ</button>
+        </div>
+
+        <div class="section-title">ካርድ ይምረጡ (1 - 400)</div>
+        <div style="font-size:12px; color:var(--subtext); margin-bottom:10px;">
+            🔴 የቀይ ቀለም ያላቸው ካርዶች በሌላ ተጫዋች የተያዙ ናቸው!
+        </div>
+
+        <div id="cards-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-height: 380px; overflow-y: auto; padding: 5px; background: var(--card-bg); border-radius: 10px;"></div>
     </div>
 
     <!-- 2. DEPOSIT SCREEN -->
@@ -338,12 +388,18 @@
         </div>
     </div>
 
-    <!-- 3. GAME PLAY SCREEN (አዲስ የተጨመረ) -->
+    <!-- 3. GAME PLAY SCREEN -->
     <div id="game-screen" class="screen">
         <div class="game-status-box">
             <div style="font-size: 13px; color: var(--subtext);">የክፍል ስም፡ <span id="game-room-name">room_10</span></div>
             <div class="called-num-display" id="called-number">--</div>
-            <div style="font-size: 12px; color: var(--accent-blue);" id="game-status-text">ጨዋታው እየተጠበቀ ነው...</div>
+            
+            <!-- ⏱️ REAL-TIME COUNTDOWN DISPLAY -->
+            <div id="timer-box" class="timer-container" style="display: none;">
+                ⏱️ ጨዋታው ለመጀመር፡ <span id="timer-count" class="timer-text">0</span> ሰከንድ
+            </div>
+
+            <div style="font-size: 12px; color: var(--accent-blue); margin-top:5px;" id="game-status-text">ጨዋታው እየተጠበቀ ነው...</div>
         </div>
 
         <!-- BINGO HEADERS -->
@@ -390,6 +446,7 @@
         let userName = "Demo User";
         let userBalance = 0; 
         let currentRoomId = "room_10";
+        let selectedCardNumber = null;
         let currentCardFlat = [];
         let markedIndices = [];
 
@@ -403,13 +460,11 @@
         let selectedPaymentMethod = 'TELEBIRR';
 
         function initUserData() {
-            // User Balance Sync
             db.ref('users/' + userId + '/balance').on('value', (snapshot) => {
                 userBalance = snapshot.val() || 0;
                 document.querySelectorAll('.user-balance-text').forEach(el => el.innerText = parseFloat(userBalance).toFixed(2));
             });
 
-            // Transaction History Sync
             db.ref('transactions/' + userId).on('value', (snapshot) => {
                 const data = snapshot.val();
                 const container = document.getElementById('history-container');
@@ -472,38 +527,89 @@
             }
         }
 
-        // --- BINGO GAME FUNCTIONS ---
+        // --- CARD SELECTION & GAME FLOW ---
 
         function openGame(price) {
             if (userBalance < price) {
                 alert(`የሒሳብዎ መጠን በቂ አይደለም! ለዚህ ጨዋታ ቢያንስ ${price} ብር ያስፈልግዎታል። እባክዎን አስቀድመው ብር ያስገቡ።`);
                 showScreen('deposit-screen');
-            } else {
-                currentRoomId = `room_${price}`;
-                document.getElementById('game-room-name').innerText = currentRoomId;
-                
-                // ካርታ አዘጋጅ እና ወደ ጨዋታው ገፅ ግባ
-                generateBingoCard();
-                listenToRoomUpdates(currentRoomId);
+                return;
+            }
+
+            currentRoomId = `room_${price}`;
+            document.getElementById('selected-room-title').innerText = currentRoomId;
+            
+            // 1 - 400 Grid ማሳያ
+            loadCardSelectionGrid(currentRoomId);
+            showScreen('card-selection-screen');
+        }
+
+        function loadCardSelectionGrid(roomId) {
+            const gridContainer = document.getElementById('cards-grid');
+            gridContainer.innerHTML = '<p style="grid-column: span 5; text-align:center;">ካርዶች በመጫን ላይ...</p>';
+
+            db.ref(`game_rooms/${roomId}/taken_cards`).on('value', (snapshot) => {
+                const takenCards = snapshot.val() || {};
+                gridContainer.innerHTML = '';
+
+                for (let i = 1; i <= 400; i++) {
+                    const btn = document.createElement('button');
+                    const isTaken = takenCards[i] ? true : false;
+
+                    btn.className = 'card-select-btn' + (isTaken ? ' taken' : '');
+                    btn.innerText = i;
+
+                    if (isTaken) {
+                        btn.onclick = () => alert(`ካርድ ቁጥር ${i} በሌላ ተጫዋች የተያዘ ነው! እባክዎን ሌላ ይምረጡ።`);
+                    } else {
+                        btn.onclick = () => selectCardAndEnterGame(i, roomId);
+                    }
+
+                    gridContainer.appendChild(btn);
+                }
+            });
+        }
+
+        function selectCardAndEnterGame(cardNumber, roomId) {
+            if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። ወደ ጨዋታው መግባት ይፈልጋሉ?`)) {
+                selectedCardNumber = cardNumber;
+
+                // ካርዱን በ Firebase መመዝገብ
+                db.ref(`game_rooms/${roomId}/taken_cards/${cardNumber}`).set({
+                    userId: userId,
+                    userName: userName,
+                    timestamp: Date.now()
+                });
+
+                document.getElementById('game-room-name').innerText = `${roomId} (ካርድ #${cardNumber})`;
+
+                generateBingoCardForNumber(cardNumber);
+                listenToRoomUpdates(roomId);
                 showScreen('game-screen');
             }
         }
 
-        function generateBingoCard() {
-            function getNums(min, max, count) {
+        function generateBingoCardForNumber(seed) {
+            function seededRandom(s) {
+                let x = Math.sin(s++) * 10000;
+                return x - Math.floor(x);
+            }
+
+            function getNums(min, max, count, s) {
                 let nums = [];
+                let localSeed = s;
                 while (nums.length < count) {
-                    let r = Math.floor(Math.random() * (max - min + 1)) + min;
+                    let r = Math.floor(seededRandom(localSeed++) * (max - min + 1)) + min;
                     if (!nums.includes(r)) nums.push(r);
                 }
                 return nums;
             }
 
-            let B = getNums(1, 15, 5);
-            let I = getNums(16, 30, 5);
-            let N = getNums(31, 45, 5);
-            let G = getNums(46, 60, 5);
-            let O = getNums(61, 75, 5);
+            let B = getNums(1, 15, 5, seed * 1);
+            let I = getNums(16, 30, 5, seed * 2);
+            let N = getNums(31, 45, 5, seed * 3);
+            let G = getNums(46, 60, 5, seed * 4);
+            let O = getNums(61, 75, 5, seed * 5);
 
             N[2] = "FREE";
 
@@ -561,6 +667,31 @@
                     document.getElementById('game-status-text').innerText = "ሁኔታ፡ " + data.status;
                 }
 
+                // ⏱️ REAL-TIME COUNTDOWN TIMER LOGIC
+                const timerBox = document.getElementById('timer-box');
+                const timerCount = document.getElementById('timer-count');
+
+                if (data.status === 'WAITING' && data.start_time) {
+                    timerBox.style.display = 'inline-block';
+                    
+                    const updateCountdown = () => {
+                        const now = Date.now();
+                        const remainingMs = data.start_time - now;
+                        const remainingSec = Math.ceil(remainingMs / 1000);
+
+                        if (remainingSec > 0) {
+                            timerCount.innerText = remainingSec;
+                        } else {
+                            timerBox.style.display = 'none';
+                            document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
+                        }
+                    };
+
+                    updateCountdown();
+                } else {
+                    timerBox.style.display = 'none';
+                }
+
                 if (data.status === 'FINISHED' && data.winner) {
                     if (data.winner == userId) {
                         alert("🎉 እንኳን ደስ አለዎት! አሸንፈዋል!");
@@ -584,6 +715,7 @@
 
         function leaveGame() {
             db.ref('game_rooms/' + currentRoomId).off();
+            db.ref(`game_rooms/${currentRoomId}/taken_cards`).off();
             showScreen('home-screen');
         }
 
