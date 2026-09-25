@@ -281,7 +281,6 @@
     </div>
 
     <script>
-        // YOUR FIREBASE CONFIGURATION (Database URL Updated)
         const firebaseConfig = {
             apiKey: "AIzaSyBEyISsoSW7dwfOWV_rT9MeI1ttD9GYI8o",
             authDomain: "kena-bingo.firebaseapp.com",
@@ -292,16 +291,15 @@
             appId: "1:844758014734:web:dcdfa5e3b31b240d1b155f"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // TELEGRAM USER DATA
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         let userId = "demo_user_123";
         let userName = "Demo User";
+        let userBalance = 0; // የተጫዋቹ የብር መጠን (balance)
 
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
             userId = tg.initDataUnsafe.user.id.toString();
@@ -312,12 +310,11 @@
 
         let selectedPaymentMethod = 'TELEBIRR';
 
-        // REALTIME DATABASE LISTENERS
         function initUserData() {
             // User Balance Sync
             db.ref('users/' + userId + '/balance').on('value', (snapshot) => {
-                const bal = snapshot.val() || 0;
-                document.querySelectorAll('.user-balance-text').forEach(el => el.innerText = parseFloat(bal).toFixed(2));
+                userBalance = snapshot.val() || 0;
+                document.querySelectorAll('.user-balance-text').forEach(el => el.innerText = parseFloat(userBalance).toFixed(2));
             });
 
             // Transaction History Sync
@@ -383,8 +380,15 @@
             }
         }
 
+        // የተስተካከለው openGame ፋንክሽን
         function openGame(price) {
-            alert(`ባለ ${price} ብር ጨዋታን መርጠዋል።`);
+            if (userBalance < price) {
+                alert(`የሒሳብዎ መጠን በቂ አይደለም! ለዚህ ጨዋታ ቢያንስ ${price} ብር ያስፈልግዎታል። እባክዎን አስቀድመው ብር ያስገቡ።`);
+                showScreen('deposit-screen'); // በቀጥታ ወደ ብር ማስገቢያ ገፅ መውሰጃ
+            } else {
+                alert(`ባለ ${price} ብር ጨዋታ ላይ እየገቡ ነው...`);
+                // እዚህ ጋር ወደ ጨዋታው ማስገቢያ/መጫወቻ ገፅ የሚወስደውን ኮድ ማስገባት ይችላሉ
+            }
         }
 
         function submitDeposit() {
@@ -393,13 +397,11 @@
 
             const parsedAmount = parseFloat(amountInput);
 
-            // 1. የብር መጠን ማረጋገጫ (Validation)
             if (!amountInput || isNaN(parsedAmount) || parsedAmount <= 0) {
                 alert("እባክዎን ትክክለኛ የብር መጠን ያስገቡ!");
                 return;
             }
 
-            // 2. Transaction ID ማረጋገጫ (Validation - ፊደልና ቁጥር ብቻ)
             const txRegex = /^[a-zA-Z0-9\s:-]+$/;
             if (!smsInput || !txRegex.test(smsInput)) {
                 alert("እባክዎን ትክክለኛ የ SMS መልእክት ወይም Transaction ID ብቻ ያስገቡ!");
@@ -410,7 +412,6 @@
             const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
             const txId = db.ref().child('transactions').push().key;
 
-            // Save deposit to Firebase Database
             db.ref('transactions/' + userId + '/' + txId).set({
                 id: txId,
                 method: selectedPaymentMethod,
@@ -420,7 +421,6 @@
                 status: 'PENDING'
             });
 
-            // Send notification to Telegram Admin Bot
             tg.sendData(JSON.stringify({
                 action: "deposit_request",
                 tx_id: txId,
