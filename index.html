@@ -1,57 +1,103 @@
-function submitDeposit() {
-    const amountInput = document.getElementById('deposit-amount').value.trim();
-    const smsInput = document.getElementById('deposit-sms').value.trim();
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kena Bingo - Deposit</title>
+    <!-- Telegram WebApp Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
 
-    const parsedAmount = parseFloat(amountInput);
+    <!-- የገንዘብ ማስገቢያ ቅጽ (Deposit Form) -->
+    <div id="deposit-section">
+        <h3>የገንዘብ ማስገቢያ (Deposit)</h3>
+        
+        <label for="deposit-amount">የብር መጠን:</label>
+        <input type="number" id="deposit-amount" placeholder="ምሳሌ፡ 100" />
 
-    if (!amountInput || isNaN(parsedAmount) || parsedAmount <= 0) {
-        alert("እባክዎን ትክክለኛ የብር መጠን ያስገቡ!");
-        return;
-    }
+        <br><br>
 
-    const txRegex = /^[a-zA-Z0-9\s:-]+$/;
-    if (!smsInput || !txRegex.test(smsInput)) {
-        alert("እባክዎን ትክክለኛ የ SMS መልእክት ወይም Transaction ID ብቻ ያስገቡ!");
-        return;
-    }
+        <label for="deposit-sms">SMS / Transaction ID:</label>
+        <input type="text" id="deposit-sms" placeholder="ትራንዛክሽን አይዲ ያስገቡ" />
 
-    const now = new Date();
-    const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
-    
-    // Unique Transaction Key መፍጠር
-    const txId = db.ref().child('recharges').push().key;
+        <br><br>
 
-    const depositData = {
-        id: txId,
-        userId: userId,
-        userName: userName,
-        method: selectedPaymentMethod,
-        amount: parsedAmount.toFixed(2),
-        sms_text: smsInput,
-        date: dateStr,
-        status: 'PENDING',
-        timestamp: Date.now()
-    };
+        <button onclick="submitDeposit()">ጥያቄውን ላክ</button>
+    </div>
 
-    // 1. ለአድሚኑ Admin Panel ይታይ ዘንድ በ 'recharges' Node ስር መጻፍ
-    db.ref('recharges/' + txId).set(depositData);
+    <!-- 👉 የ JavaScript ኮዱ በትክክል እንዲሰራ በ script tag ውስጥ ተጠቅልሏል -->
+    <script>
+        // Telegram WebApp Initialization
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            tg.expand();
+        }
 
-    // 2. ለተጫዋቹ የራሱ የትራንዛክሽን ታሪክ (History) እንዲታየው በ 'transactions/userId' ስር መጻፍ
-    db.ref('transactions/' + userId + '/' + txId).set(depositData);
+        // ለሙከራ/ለጊዜው የተመደቡ variables (ከ Telegram WebApp ወይም Auth የሚመጡ)
+        const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "359257002";
+        const userName = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "User";
+        let selectedPaymentMethod = "TELEBIRR"; // Default payment method
 
-    // 3. ወደ Telegram Bot መረጃ መላክ
-    tg.sendData(JSON.stringify({
-        action: "deposit_request",
-        tx_id: txId,
-        user_id: userId,
-        user_name: userName,
-        method: selectedPaymentMethod,
-        amount: parsedAmount.toFixed(2),
-        sms_text: smsInput
-    }));
+        function submitDeposit() {
+            const amountInput = document.getElementById('deposit-amount').value.trim();
+            const smsInput = document.getElementById('deposit-sms').value.trim();
 
-    alert("የገንዘብ ማስገቢያ ጥያቄዎ በትክክል ተልኳል!");
+            const parsedAmount = parseFloat(amountInput);
 
-    document.getElementById('deposit-amount').value = '';
-    document.getElementById('deposit-sms').value = '';
-}
+            if (!amountInput || isNaN(parsedAmount) || parsedAmount <= 0) {
+                alert("እባክዎን ትክክለኛ የብር መጠን ያስገቡ!");
+                return;
+            }
+
+            const txRegex = /^[a-zA-Z0-9\s:-]+$/;
+            if (!smsInput || !txRegex.test(smsInput)) {
+                alert("እባክዎን ትክክለኛ የ SMS መልእክት ወይም Transaction ID ብቻ ያስገቡ!");
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
+            
+            // Unique Transaction Key መፍጠር
+            const txId = db.ref().child('recharges').push().key;
+
+            const depositData = {
+                id: txId,
+                userId: userId,
+                userName: userName,
+                method: selectedPaymentMethod,
+                amount: parsedAmount.toFixed(2),
+                sms_text: smsInput,
+                date: dateStr,
+                status: 'PENDING',
+                timestamp: Date.now()
+            };
+
+            // 1. ለአድሚኑ Admin Panel ይታይ ዘንድ በ 'recharges' Node ስር መጻፍ
+            db.ref('recharges/' + txId).set(depositData);
+
+            // 2. ለተጫዋቹ የራሱ የትራንዛክሽን ታሪክ (History) እንዲታየው በ 'transactions/userId' ስር መጻፍ
+            db.ref('transactions/' + userId + '/' + txId).set(depositData);
+
+            // 3. ወደ Telegram Bot መረጃ መላክ
+            if (tg) {
+                tg.sendData(JSON.stringify({
+                    action: "deposit_request",
+                    tx_id: txId,
+                    user_id: userId,
+                    user_name: userName,
+                    method: selectedPaymentMethod,
+                    amount: parsedAmount.toFixed(2),
+                    sms_text: smsInput
+                }));
+            }
+
+            alert("የገንዘብ ማስገቢያ ጥያቄዎ በትክክል ተልኳል!");
+
+            document.getElementById('deposit-amount').value = '';
+            document.getElementById('deposit-sms').value = '';
+        }
+    </script>
+</body>
+</html>
