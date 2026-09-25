@@ -74,7 +74,18 @@
             font-size: 15px;
             cursor: pointer;
             margin-bottom: 10px;
-            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .room-timer-tag {
+            font-size: 13px;
+            color: var(--accent-yellow);
+            background: rgba(241, 196, 15, 0.15);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(241, 196, 15, 0.3);
         }
 
         .notice-box {
@@ -207,7 +218,6 @@
             margin: 5px 0;
         }
         
-        /* ⏱️ COUNTDOWN TIMER STYLING */
         .timer-container {
             background: rgba(231, 76, 60, 0.15);
             border: 1px solid var(--accent-red);
@@ -272,7 +282,6 @@
             box-shadow: 0 4px 10px rgba(241, 196, 15, 0.3);
         }
 
-        /* 🔴 CARD SELECTION STYLING */
         .card-select-btn {
             background-color: var(--inner-card);
             border: 1px solid #1c4357;
@@ -307,13 +316,25 @@
         </div>
 
         <div class="section-title">ጨዋታ ይምረጡ</div>
-        <button class="room-btn" onclick="openGame(50)">💵 ባለ 50 ብር ጨዋታ</button>
-        <button class="room-btn" onclick="openGame(20)">💵 ባለ 20 ብር ጨዋታ</button>
-        <button class="room-btn" onclick="openGame(10)">💵 ባለ 10 ብር ጨዋታ</button>
-        <button class="room-btn" onclick="openGame(5)">💵 ባለ 5 ብር ጨዋታ</button>
+        <button class="room-btn" onclick="openGame(50)">
+            <span>💵 ባለ 50 ብር ጨዋታ</span>
+            <span class="room-timer-tag" id="timer-room_50">--</span>
+        </button>
+        <button class="room-btn" onclick="openGame(20)">
+            <span>💵 ባለ 20 ብር ጨዋታ</span>
+            <span class="room-timer-tag" id="timer-room_20">--</span>
+        </button>
+        <button class="room-btn" onclick="openGame(10)">
+            <span>💵 ባለ 10 ብር ጨዋታ</span>
+            <span class="room-timer-tag" id="timer-room_10">--</span>
+        </button>
+        <button class="room-btn" onclick="openGame(5)">
+            <span>💵 ባለ 5 ብር ጨዋታ</span>
+            <span class="room-timer-tag" id="timer-room_5">--</span>
+        </button>
     </div>
 
-    <!-- 1.5 CARD SELECTION SCREEN (1 - 400 Grid) -->
+    <!-- 1.5 CARD SELECTION SCREEN -->
     <div id="card-selection-screen" class="screen">
         <div class="user-bar">
             <div>የተመረጠ ክፍል፡ <span id="selected-room-title">room_10</span></div>
@@ -394,7 +415,6 @@
             <div style="font-size: 13px; color: var(--subtext);">የክፍል ስም፡ <span id="game-room-name">room_10</span></div>
             <div class="called-num-display" id="called-number">--</div>
             
-            <!-- ⏱️ REAL-TIME COUNTDOWN DISPLAY -->
             <div id="timer-box" class="timer-container" style="display: none;">
                 ⏱️ ጨዋታው ለመጀመር፡ <span id="timer-count" class="timer-text">0</span> ሰከንድ
             </div>
@@ -402,7 +422,6 @@
             <div style="font-size: 12px; color: var(--accent-blue); margin-top:5px;" id="game-status-text">ጨዋታው እየተጠበቀ ነው...</div>
         </div>
 
-        <!-- BINGO HEADERS -->
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); max-width: 340px; margin: 0 auto;">
             <div class="bingo-header-cell">B</div>
             <div class="bingo-header-cell">I</div>
@@ -411,7 +430,6 @@
             <div class="bingo-header-cell">O</div>
         </div>
 
-        <!-- BINGO GRID -->
         <div id="bingo-card" class="bingo-grid"></div>
 
         <button class="btn-claim-bingo" onclick="claimBingo()">🎉 BINGO!</button>
@@ -495,6 +513,41 @@
                     container.innerHTML += html;
                 });
             });
+
+            // ⏱️ ለእያንዳንዱ ክፍል በዋናው ገፅ ላይ የሰከንድ ቆጣሪ ማገናኛ
+            listenToHomeRoomTimers();
+        }
+
+        // በዋናው ገፅ ላይ የእያንዳንዱን ክፍል ሰከንድ በ Real-time የሚከታተል ፋንክሽን
+        function listenToHomeRoomTimers() {
+            const rooms = ['room_50', 'room_20', 'room_10', 'room_5'];
+
+            rooms.forEach(roomId => {
+                db.ref(`game_rooms/${roomId}`).on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    const timerTag = document.getElementById(`timer-${roomId}`);
+                    if (!timerTag) return;
+
+                    if (data && data.status === 'WAITING' && data.start_time) {
+                        const now = Date.now();
+                        const remainingSec = Math.ceil((data.start_time - now) / 1000);
+
+                        if (remainingSec > 0) {
+                            timerTag.innerText = `⏱️ ${remainingSec} ሰከንድ`;
+                            timerTag.style.color = "var(--accent-yellow)";
+                        } else {
+                            timerTag.innerText = "ጨዋታው ተጀምሯል";
+                            timerTag.style.color = "var(--accent-green)";
+                        }
+                    } else if (data && data.status === 'PLAYING') {
+                        timerTag.innerText = "በጨዋታ ላይ";
+                        timerTag.style.color = "var(--accent-green)";
+                    } else {
+                        timerTag.innerText = "ምዝገባ ላይ";
+                        timerTag.style.color = "var(--subtext)";
+                    }
+                });
+            });
         }
 
         initUserData();
@@ -539,7 +592,6 @@
             currentRoomId = `room_${price}`;
             document.getElementById('selected-room-title').innerText = currentRoomId;
             
-            // 1 - 400 Grid ማሳያ
             loadCardSelectionGrid(currentRoomId);
             showScreen('card-selection-screen');
         }
@@ -574,7 +626,6 @@
             if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። ወደ ጨዋታው መግባት ይፈልጋሉ?`)) {
                 selectedCardNumber = cardNumber;
 
-                // ካርዱን በ Firebase መመዝገብ
                 db.ref(`game_rooms/${roomId}/taken_cards/${cardNumber}`).set({
                     userId: userId,
                     userName: userName,
@@ -667,7 +718,6 @@
                     document.getElementById('game-status-text').innerText = "ሁኔታ፡ " + data.status;
                 }
 
-                // ⏱️ REAL-TIME COUNTDOWN TIMER LOGIC
                 const timerBox = document.getElementById('timer-box');
                 const timerCount = document.getElementById('timer-count');
 
