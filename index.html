@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -793,19 +792,11 @@
 
         function listenToRoomUpdates(roomId) {
             let lastCalled = null;
+            let countdownTimer = null;
 
             db.ref('game_rooms/' + roomId).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
-
-                if (data.current_number) {
-                    document.getElementById('called-number').innerText = data.current_number;
-                    
-                    if (lastCalled !== data.current_number) {
-                        lastCalled = data.current_number;
-                        speakAmharicNumber(data.current_number);
-                    }
-                }
 
                 if (data.status) {
                     document.getElementById('game-status-text').innerText = "ሁኔታ፡ " + data.status;
@@ -814,21 +805,47 @@
                 const timerBox = document.getElementById('timer-box');
                 const timerCount = document.getElementById('timer-count');
 
+                // ⏱️ ከፍ ካለበት ሰከንድ ጀምሮ ወደ ታች (እስከ 00) መቁጠር (Countdown)
                 if (data.status === 'WAITING' && data.start_time) {
                     timerBox.style.display = 'inline-block';
                     
-                    const now = Date.now();
-                    const remainingMs = data.start_time - now;
-                    const remainingSec = Math.ceil(remainingMs / 1000);
+                    if (!countdownTimer) {
+                        countdownTimer = setInterval(() => {
+                            const now = Date.now();
+                            const remainingMs = data.start_time - now;
+                            const remainingSec = Math.ceil(remainingMs / 1000);
 
-                    if (remainingSec > 0) {
-                        timerCount.innerText = remainingSec;
-                    } else {
-                        timerBox.style.display = 'none';
-                        document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
+                            if (remainingSec > 0) {
+                                timerCount.innerText = remainingSec;
+                            } else {
+                                timerCount.innerText = 0;
+                                clearInterval(countdownTimer);
+                                countdownTimer = null;
+                                timerBox.style.display = 'none';
+                                document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል!";
+                            }
+                        }, 1000);
                     }
                 } else {
                     timerBox.style.display = 'none';
+                    if (countdownTimer) {
+                        clearInterval(countdownTimer);
+                        countdownTimer = null;
+                    }
+                }
+
+                // 🔊 የቢንጎ ቁጥሮች በየ 3 ሰከንድ በድምፅ (በአማርኛ) እንዲወጡ ማድረግ
+                if (data.status === 'PLAYING' && data.current_number) {
+                    document.getElementById('called-number').innerText = data.current_number;
+                    
+                    if (lastCalled !== data.current_number) {
+                        lastCalled = data.current_number;
+                        
+                        // በየ 3 ሰከንድ (3000 ሚሊሰከንድ) ዴይሊ ድምፁ እንዲጠራ ማድረግ
+                        setTimeout(() => {
+                            speakAmharicNumber(data.current_number);
+                        }, 3000);
+                    }
                 }
 
                 if (data.status === 'FINISHED' && data.winner) {
@@ -946,4 +963,3 @@
         }
     </script>
 </body>
-
