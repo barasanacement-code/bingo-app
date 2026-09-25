@@ -29,7 +29,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 12px;
-            padding-bottom: 70px;
+            padding-bottom: 75px;
         }
 
         .screen { display: none; }
@@ -198,6 +198,7 @@
             justify-content: space-around;
             padding: 10px 0;
             border-top: 1px solid #1c4357;
+            z-index: 100;
         }
         .nav-btn { background: none; border: none; color: var(--subtext); font-size: 11px; cursor: pointer; text-align: center; }
         .nav-btn.active { color: var(--accent-blue); }
@@ -409,6 +410,33 @@
         </div>
     </div>
 
+    <!-- 2.5 WITHDRAWAL SCREEN -->
+    <div id="withdraw-screen" class="screen">
+        <div class="user-bar">
+            <div>ዋና ሒሳብ</div>
+            <div class="balance"><span class="user-balance-text">0.00</span> <small style="font-size:12px; color:var(--accent-yellow);">ብር</small></div>
+        </div>
+
+        <div class="section-title">ገንዘብ ማውጫ (WITHDRAW)</div>
+        
+        <div class="method-select">
+            <div class="method-btn selected" id="wm-telebirr" onclick="selectWithdrawMethod('TELEBIRR')">TELEBIRR</div>
+            <div class="method-btn" id="wm-cbe" onclick="selectWithdrawMethod('CBEBIRR')">CBE Birr</div>
+        </div>
+
+        <div class="input-group">
+            <label>የአካውንት / የስልክ ቁጥር</label>
+            <input type="text" class="input-field" placeholder="09... / 1000..." id="withdraw-account">
+        </div>
+
+        <div class="input-group">
+            <label>የሚያወጡት የብር መጠን (ቢያንስ 50 ብር)</label>
+            <input type="number" class="input-field" placeholder="0.00" id="withdraw-amount" min="50" step="any">
+        </div>
+
+        <button class="btn-submit" style="background-color: var(--accent-yellow); color:#000;" onclick="submitWithdrawal()">ብር አውጣ</button>
+    </div>
+
     <!-- 3. GAME PLAY SCREEN -->
     <div id="game-screen" class="screen">
         <div class="game-status-box">
@@ -440,7 +468,7 @@
     <div class="nav-bar">
         <button class="nav-btn active" id="nav-home" onclick="showScreen('home-screen')">🏠<br>ዋና ገፅ</button>
         <button class="nav-btn" id="nav-deposit" onclick="showScreen('deposit-screen')">📥<br>ብር አስገባ</button>
-        <button class="nav-btn" onclick="alert('የማውጫ ገፅ')">📤<br>ብር አውጣ</button>
+        <button class="nav-btn" id="nav-withdraw" onclick="showScreen('withdraw-screen')">📤<br>ብር አውጣ</button>
     </div>
 
     <script>
@@ -477,6 +505,22 @@
         document.getElementById('user-display').innerText = "ተጫዋች: " + userName;
 
         let selectedPaymentMethod = 'TELEBIRR';
+        let selectedWithdrawMethod = 'TELEBIRR';
+
+        // 🔊 የድምፅ ውጤቶች
+        const winSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3');
+
+        // 🔊 የተጠሩ ቁጥሮችን በአማርኛ በድምፅ የመጥራት ተግባር (Text-to-Speech)
+        function speakAmharicNumber(number) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // የቀደመውን ድምፅ ማቋረጥ
+                const utterance = new SpeechSynthesisUtterance(number.toString());
+                utterance.lang = 'am-ET'; // አማርኛ ቋንቋ
+                utterance.rate = 0.85; // ለንብበቱ ተስማሚ ፍጥነት
+                utterance.pitch = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
 
         function initUserData() {
             db.ref('users/' + userId + '/balance').on('value', (snapshot) => {
@@ -499,14 +543,18 @@
                     if (item.status === 'APPROVED') badgeClass = 'badge-approved';
                     if (item.status === 'REJECTED') badgeClass = 'badge-rejected';
 
+                    const typeTitle = item.type === 'WITHDRAWAL' ? 'WITHDRAWAL' : 'DEPOSIT';
+                    const amountSign = item.type === 'WITHDRAWAL' ? '-' : '+';
+                    const amountColor = item.type === 'WITHDRAWAL' ? 'var(--accent-red)' : 'var(--accent-green)';
+
                     const html = `
                         <div class="history-item">
                             <div>
-                                <strong style="font-size: 13px;">DEPOSIT</strong><br>
+                                <strong style="font-size: 13px;">${typeTitle}</strong><br>
                                 <small style="color:var(--subtext);">${item.method} • ${item.date}</small>
                             </div>
                             <div style="text-align: right;">
-                                <span style="color:var(--accent-green); font-weight:bold;">+${item.amount} ብር</span><br>
+                                <span style="color:${amountColor}; font-weight:bold;">${amountSign}${item.amount} ብር</span><br>
                                 <span class="${badgeClass}">${item.status}</span>
                             </div>
                         </div>
@@ -557,9 +605,11 @@
 
             document.getElementById('nav-home').classList.remove('active');
             document.getElementById('nav-deposit').classList.remove('active');
+            document.getElementById('nav-withdraw').classList.remove('active');
 
             if(screenId === 'home-screen') document.getElementById('nav-home').classList.add('active');
             if(screenId === 'deposit-screen') document.getElementById('nav-deposit').classList.add('active');
+            if(screenId === 'withdraw-screen') document.getElementById('nav-withdraw').classList.add('active');
         }
 
         function copyToClipboard(text) {
@@ -579,7 +629,17 @@
             }
         }
 
-        // --- CARD SELECTION & GAME FLOW ---
+        function selectWithdrawMethod(method) {
+            selectedWithdrawMethod = method;
+            document.getElementById('wm-telebirr').classList.remove('selected');
+            document.getElementById('wm-cbe').classList.remove('selected');
+
+            if(method === 'TELEBIRR') {
+                document.getElementById('wm-telebirr').classList.add('selected');
+            } else {
+                document.getElementById('wm-cbe').classList.add('selected');
+            }
+        }
 
         function openGame(price) {
             if (userBalance < price) {
@@ -634,14 +694,12 @@
             }
 
             if (confirm(`ካርድ ቁጥር ${cardNumber} መርጠዋል። በ ${currentRoomPrice} ብር መጫወት ይፈልጋሉ?`)) {
-                
-                // 1. የካርድ ክፍያ ከአካውንት ላይ መቀነስ (Deduce balance)
                 const userBalanceRef = db.ref(`users/${userId}/balance`);
                 userBalanceRef.transaction((current) => {
                     if ((current || 0) >= currentRoomPrice) {
                         return current - currentRoomPrice;
                     } else {
-                        return; // Abort transaction if insufficient
+                        return;
                     }
                 }, (error, committed) => {
                     if (error || !committed) {
@@ -649,7 +707,6 @@
                         return;
                     }
 
-                    // 2. ካርዱን መያዝ (Reserve Card)
                     selectedCardNumber = cardNumber;
                     db.ref(`game_rooms/${roomId}/taken_cards/${cardNumber}`).set({
                         userId: userId,
@@ -682,7 +739,6 @@
                 return nums;
             }
 
-            // ተደራራቢ Seed እኩል እንዳይሆን የተለዩ ፕራይም ቁጥሮች (Prime Multipliers) መጠቀም
             let B = getNums(1, 15, 5, seed * 10007);
             let I = getNums(16, 30, 5, seed * 20011);
             let N = getNums(31, 45, 5, seed * 30013);
@@ -733,12 +789,20 @@
         }
 
         function listenToRoomUpdates(roomId) {
+            let lastCalled = null;
+
             db.ref('game_rooms/' + roomId).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
 
                 if (data.current_number) {
                     document.getElementById('called-number').innerText = data.current_number;
+                    
+                    // አዲስ ቁጥር ሲመጣ በድምፅ በአማርኛ መጥራት
+                    if (lastCalled !== data.current_number) {
+                        lastCalled = data.current_number;
+                        speakAmharicNumber(data.current_number);
+                    }
                 }
 
                 if (data.status) {
@@ -767,6 +831,7 @@
 
                 if (data.status === 'FINISHED' && data.winner) {
                     if (data.winner == userId) {
+                        winSound.play().catch(() => {});
                         alert("🎉 እንኳን ደስ አለዎት! አሸንፈዋል!");
                     } else {
                         alert(`ጨዋታው ተጠናቋል! አሸናፊ ID: ${data.winner}`);
@@ -775,7 +840,22 @@
             });
         }
 
+        function checkBingoPattern() {
+            const winPatterns = [
+                [0,1,2,3,4], [5,6,7,8,9], [10,11,12,13,14], [15,16,17,18,19], [20,21,22,23,24],
+                [0,5,10,15,20], [1,6,11,16,21], [2,7,12,17,22], [3,8,13,18,23], [4,9,14,19,24],
+                [0,6,12,18,24], [4,8,12,16,20]
+            ];
+
+            return winPatterns.some(pattern => pattern.every(index => markedIndices.includes(index)));
+        }
+
         function claimBingo() {
+            if (!checkBingoPattern()) {
+                alert("⚠️ ገና BINGO አልሞሉም! እባክዎን መስመሮችን በደንብ ይፈትሹ።");
+                return;
+            }
+
             const claimRef = db.ref(`game_rooms/${currentRoomId}/claims`);
             claimRef.set({
                 userId: userId,
@@ -816,6 +896,7 @@
 
             db.ref('transactions/' + userId + '/' + txId).set({
                 id: txId,
+                type: 'DEPOSIT',
                 method: selectedPaymentMethod,
                 amount: parsedAmount.toFixed(2),
                 sms_text: smsInput,
@@ -836,6 +917,56 @@
 
             document.getElementById('deposit-amount').value = '';
             document.getElementById('deposit-sms').value = '';
+        }
+
+        function submitWithdrawal() {
+            const accInput = document.getElementById('withdraw-account').value.trim();
+            const amountInput = document.getElementById('withdraw-amount').value.trim();
+
+            const parsedAmount = parseFloat(amountInput);
+
+            if (!accInput || accInput.length < 9) {
+                alert("እባክዎን ትክክለኛ የአካውንት ወይም የስልክ ቁጥር ያስገቡ!");
+                return;
+            }
+
+            if (!amountInput || isNaN(parsedAmount) || parsedAmount < 50) {
+                alert("ዝቅተኛው የማውጫ መጠን 50 ብር ነው!");
+                return;
+            }
+
+            if (parsedAmount > userBalance) {
+                alert("የጠየቁት የብር መጠን በሒሳብዎ ላይ ካለው መጠን ይበልጣል!");
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
+            const txId = db.ref().child('transactions').push().key;
+
+            db.ref('transactions/' + userId + '/' + txId).set({
+                id: txId,
+                type: 'WITHDRAWAL',
+                method: selectedWithdrawMethod,
+                account: accInput,
+                amount: parsedAmount.toFixed(2),
+                date: dateStr,
+                status: 'PENDING'
+            });
+
+            tg.sendData(JSON.stringify({
+                action: "withdraw_request",
+                tx_id: txId,
+                user_id: userId,
+                method: selectedWithdrawMethod,
+                account: accInput,
+                amount: parsedAmount.toFixed(2)
+            }));
+
+            alert("የብር ማውጣት ጥያቄዎ ተልኳል! በቅርቡ አስተዳዳሪው ያረጋግጥልዎታል።");
+
+            document.getElementById('withdraw-account').value = '';
+            document.getElementById('withdraw-amount').value = '';
         }
     </script>
 </body>
