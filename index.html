@@ -1,8 +1,3 @@
-<ElicitationsGroup>
-የ `submitDeposit()` እና የ `submitWithdrawal()` (የብር ማውጣት) ተግባራትን ጨምሮ ሙሉውን ኮድ አስተካክዬ አስቀምጬዋለሁ። አሁን ተጠቃሚው ብር ሲያስገባም ሆነ ሲያወጣ ጥያቄው በቀጥታ ወደ Firebase (`transactions` እና `admin_requests`) ይላካል።
-
-ይህንን ሙሉ ኮድ ኮፒ (Copy) አድርገው በ `index.html` ፋይልዎ ውስጥ ሙሉ በሙሉ መተካት ይችላሉ፡
-
 ```html
 <!DOCTYPE html>
 <html lang="am">
@@ -530,6 +525,7 @@
         }
 
         function initUserData() {
+            // 🌟 Realtime Balance Listener (አድሚኑ አፕሩቭ ሲያደርግ በራሱ እንዲቀየር የሚያደርግ) 🌟
             db.ref('users/' + userId + '/balance').on('value', (snapshot) => {
                 userBalance = snapshot.val() || 0;
                 document.querySelectorAll('.user-balance-text').forEach(el => el.innerText = parseFloat(userBalance).toFixed(2));
@@ -934,7 +930,6 @@
                 date: new Date().toLocaleString()
             };
 
-            // የብር ማውጣት ጥያቄ ሲላክ ከሒሳብ ላይ ወዲያውኑ እንዳይቀነስ ወይም እንዲቀነስ (በዚህ መልኩ ለአድሚን ይላካል)
             db.ref('transactions/' + userId + '/' + transactionId).set(withdrawData)
                 .then(() => {
                     return db.ref('admin_requests/withdrawals/' + transactionId).set(withdrawData);
